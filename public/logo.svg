@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <!-- Gradiente Metálico Dourado de Alta Fidelidade -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F9E7C4" />
+      <stop offset="20%" stop-color="#DFC18A" />
+      <stop offset="45%" stop-color="#A47E3B" />
+      <stop offset="60%" stop-color="#866127" />
+      <stop offset="80%" stop-color="#CBB17A" />
+      <stop offset="100%" stop-color="#956F2E" />
+    </linearGradient>
+    
+    <!-- Sombra projetada para dar o efeito de relevo 3D como no logo original -->
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.8" />
+    </filter>
+  </defs>
+
+  <!-- Fundo Transparente para Integração Perfeita -->
+  <rect width="100%" height="100%" fill="none" />
+
+  <g filter="url(#dropShadow)">
+    <!-- Monograma NR Integrado -->
+    <g fill="url(#goldGrad)">
+      <!-- Haste Vertical Esquerda do N -->
+      <path d="M 150,140 L 172,140 L 172,300 L 150,300 Z" />
+      
+      <!-- Haste Diagonal do N (que desce afiada) -->
+      <path d="M 172,140 L 312,300 L 282,300 L 172,176 Z" />
+      
+      <!-- Linha Superior Horizontal do R (separada da haste do N por um vão elegante de ~15px) -->
+      <path d="M 240,140 L 325,140 C 365,140 380,162 380,192 C 380,222 355,242 315,242 L 270,242 L 270,220 L 315,220 C 340,220 358,210 358,192 C 358,174 340,162 320,162 L 240,162 Z" />
+      
+      <!-- Haste Diagonal do R (paralela à diagonal do N) -->
+      <path d="M 270,220 L 375,300 L 345,300 L 252,230 Z" />
+    </g>
+
+    <!-- Texto "NEORESPONSE" Espaçado -->
+    <text x="250" y="380" 
+          fill="url(#goldGrad)" 
+          font-family="'Outfit', 'Inter', 'SF Pro Display', sans-serif" 
+          font-size="28" 
+          font-weight="400" 
+          letter-spacing="14" 
+          text-anchor="middle">NEORESPONSE</text>
+          
+    <!-- Linha Dourada Horizontal de Destaque -->
+    <line x1="215" y1="415" x2="285" y2="415" stroke="url(#goldGrad)" stroke-width="2.5" opacity="0.85" />
+  </g>
+</svg>
