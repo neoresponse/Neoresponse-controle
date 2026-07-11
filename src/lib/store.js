@@ -33,6 +33,13 @@ export function StoreProvider({ children }) {
           localStorage.removeItem("neo_user");
         } catch (err) {}
       }
+
+      // Registrar Service Worker para PWA
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js")
+          .then((reg) => console.log("PWA: Service Worker registrado:", reg.scope))
+          .catch((err) => console.error("PWA: Falha ao registrar o Service Worker:", err));
+      }
     }
   }, []);
 

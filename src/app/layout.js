@@ -10,6 +10,12 @@ export const viewport = {
 export const metadata = {
   title: "NEORESPONSE — Media Buying Financial OS",
   description: "O sistema operacional de decisão financeira e performance real para tráfego pago (media buying).",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "NEORESPONSE",
+  },
 };
 
 export default function RootLayout({ children }) {
