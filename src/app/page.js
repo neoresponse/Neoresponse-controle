@@ -24,6 +24,7 @@ import { useStore } from "@/lib/store";
 
 // Importar Componentes Locais Simplificados
 import DashboardCharts from "@/app/components/DashboardCharts";
+import FinanceiroSection from "@/app/components/FinanceiroSection";
 
 // Estruturas de Processos Padrão (SOPs) para a Linha de Produção
 const PROCESS_FRAMEWORKS = [
@@ -985,10 +986,22 @@ export default function MainApp() {
             </nav>
           </div>
 
-          {/* Lado Direito: Nome do Usuário e Botão Sair */}
+          {/* Lado Direito: Status do Banco, Nome do Usuário e Botão Sair */}
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            {/* Indicador do Banco (Supabase vs Local) */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.75rem", color: "var(--text-secondary)", marginRight: "0.5rem" }}>
+              <span style={{ 
+                width: "8px", 
+                height: "8px", 
+                borderRadius: "50%", 
+                backgroundColor: usingSupabase ? "var(--color-success)" : "var(--color-warning)",
+                boxShadow: usingSupabase ? "0 0 8px var(--color-success-glow)" : "0 0 8px var(--color-warning-glow)"
+              }}></span>
+              <span>{usingSupabase ? "Supabase (Nuvem)" : "Local (Offline)"}</span>
+            </div>
+
             {user && (
-              <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)", letterSpacing: "0.02em", borderRight: "1px solid rgba(166, 134, 80, 0.18)", paddingRight: "1rem", lineHeight: "1" }}>
+              <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)", letterSpacing: "0.02em", borderLeft: "1px solid rgba(166, 134, 80, 0.18)", paddingLeft: "1rem", borderRight: "1px solid rgba(166, 134, 80, 0.18)", paddingRight: "1rem", lineHeight: "1" }}>
                 {user.name}
               </span>
             )}
@@ -1012,261 +1025,7 @@ export default function MainApp() {
         {/* CONTEÚDO CONDICIONAL DE CADA ABA */}
 
         {/* ABA FINANCEIRO */}
-        {appTab === "financeiro" && (
-          <>
-            {/* SUB-HEADER COM FILTROS GLOBAIS DE DATA */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
-              <div>
-                <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.35rem", fontWeight: "700", letterSpacing: "-0.02em" }}>Painel Financeiro</h2>
-                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                  {usingSupabase ? "Conectado ao Supabase (Nuvem)" : "Armazenamento em Cache Local (Demo)"}
-                </span>
-              </div>
-
-              {/* Controles do Filtro Temporal */}
-              <div className={styles.controls}>
-                <div className={styles.filterGroup}>
-                  <button
-                    className={`${styles.filterBtn} ${dateFilter === "hoje" ? styles.filterBtnActive : ""}`}
-                    onClick={() => setDateFilter("hoje")}
-                  >
-                    Hoje
-                  </button>
-                  <button
-                    className={`${styles.filterBtn} ${dateFilter === "7d" ? styles.filterBtnActive : ""}`}
-                    onClick={() => setDateFilter("7d")}
-                  >
-                    7d
-                  </button>
-                  <button
-                    className={`${styles.filterBtn} ${dateFilter === "30d" ? styles.filterBtnActive : ""}`}
-                    onClick={() => setDateFilter("30d")}
-                  >
-                    30d
-                  </button>
-                  <button
-                    className={`${styles.filterBtn} ${dateFilter === "custom" ? styles.filterBtnActive : ""}`}
-                    onClick={() => setDateFilter("custom")}
-                  >
-                    Personalizado
-                  </button>
-                </div>
-
-                {dateFilter === "custom" && (
-                  <div className={styles.customDateGroup}>
-                    <input
-                      type="date"
-                      className={styles.customDateInput}
-                      value={customStartDate}
-                      onChange={(e) => setCustomStartDate(e.target.value)}
-                    />
-                    <span className={styles.dateSeparator}>a</span>
-                    <input
-                      type="date"
-                      className={styles.customDateInput}
-                      value={customEndDate}
-                      onChange={(e) => setCustomEndDate(e.target.value)}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {loading ? (
-              <div className={styles.emptyState} style={{ padding: "5rem 0" }}>
-                <Sparkles className="text-brand" style={{ animation: "spin 2s linear infinite" }} />
-                <h3>Recalculando fluxo de caixa...</h3>
-              </div>
-            ) : (
-              <div className="fade-in">
-                {/* A. CARDS DE KPIS GLOBAIS */}
-                <div className={styles.kpiGrid} style={{ marginBottom: "2rem" }}>
-                  {/* Receita */}
-                  <div className={`${styles.glassCard} ${styles.kpiCard}`}>
-                    <div className={styles.kpiHeader}>
-                      <span>FATURAMENTO (RETORNO)</span>
-                      <ArrowUpRight size={16} className="text-success" />
-                    </div>
-                    <div className={styles.kpiValue}>
-                      R$ {kpis.totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                    </div>
-                    <div className={styles.kpiSubtext}>Total bruto das vendas</div>
-                  </div>
-
-                  {/* Gastos */}
-                  <div className={`${styles.glassCard} ${styles.kpiCard}`}>
-                    <div className={styles.kpiHeader}>
-                      <span>GASTOS TOTAIS</span>
-                      <ArrowDownRight size={16} className="text-brand" />
-                    </div>
-                    <div className={styles.kpiValue}>
-                      R$ {kpis.totalSpend.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                    </div>
-                    <div className={styles.kpiSubtext}>Anúncios, produção e custos</div>
-                  </div>
-
-                  {/* Lucro Líquido */}
-                  <div className={`${styles.glassCard} ${styles.kpiCard} ${kpis.totalProfit >= 0 ? styles.kpiCardGlowSuccess : styles.kpiCardGlowDanger}`}>
-                    <div className={styles.kpiHeader}>
-                      <span>LUCRO LÍQUIDO</span>
-                      {kpis.totalProfit >= 0 ? (
-                        <TrendingUp size={16} className="text-success" />
-                      ) : (
-                        <TrendingDown size={16} className="text-danger" />
-                      )}
-                    </div>
-                    <div className={styles.kpiValue} style={{ color: kpis.totalProfit >= 0 ? "var(--color-success)" : "var(--color-danger)" }}>
-                      {kpis.totalProfit >= 0 ? "+" : ""}R$ {kpis.totalProfit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                    </div>
-                    <div className={styles.kpiSubtext}>Lucro real acumulado</div>
-                  </div>
-
-                  {/* ROAS/ROI */}
-                  <div className={`${styles.glassCard} ${styles.kpiCard}`}>
-                    <div className={styles.kpiHeader}>
-                      <span>ROAS / MULTIPLICADOR</span>
-                      <Percent size={16} className="text-brand" />
-                    </div>
-                    <div className={styles.kpiValue} style={{ color: kpis.overallRoas >= 2.0 ? "var(--color-success)" : kpis.overallRoas >= 1.0 ? "var(--color-warning)" : "var(--color-danger)" }}>
-                      {kpis.overallRoas.toFixed(2)}x
-                    </div>
-                    <div className={styles.kpiSubtext}>Retorno por real gasto</div>
-                  </div>
-                </div>
-
-                {/* B. GRÁFICO DE PROVEITO NO TEMPO */}
-                <DashboardCharts chartTimeline={chartTimeline} />
-
-                {/* C. INSIGHTS IA DO PERÍODO */}
-                <div className={styles.insightsContainer}>
-                  <div className={styles.insightGrid}>
-                    {insights.map((ins, idx) => (
-                      <div key={idx} className={`${styles.insightCard} ${
-                        ins.type === "success" ? styles.insightCardSuccess :
-                        ins.type === "danger" ? styles.insightCardDanger :
-                        ins.type === "warning" ? styles.insightCardWarning :
-                        ins.type === "info" ? styles.insightCardInfo : styles.insightCardNeutral
-                      }`} style={{ padding: "1rem 1.25rem" }}>
-                        <div className={styles.insightIcon} style={{ marginTop: "1px" }}>{getInsightIcon(ins.type)}</div>
-                        <div className={styles.insightContent}>
-                          <h4 style={{ fontSize: "0.85rem", fontWeight: "600" }}>{ins.title}</h4>
-                          <p style={{ fontSize: "0.78rem" }}>{ins.text}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* D. TABELA UNIFICADA DE LANÇAMENTOS */}
-                <div className={`${styles.glassCard} ${styles.tableCard}`} style={{ marginTop: "2rem" }}>
-                  <div className={styles.tableHeaderActions} style={{ gap: "1rem", flexWrap: "wrap" }}>
-                    <h3 className={styles.sectionTitle} style={{ margin: 0 }}>Lançamentos Recentes</h3>
-                    
-                    <div style={{ display: "flex", gap: "1rem", flexGrow: 1, justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap" }}>
-                      <div style={{ position: "relative", maxWidth: "240px", width: "100%" }}>
-                        <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
-                        <input
-                          type="text"
-                          placeholder="Buscar por descrição..."
-                          className={styles.input}
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          style={{ paddingLeft: "30px", height: "32px", fontSize: "0.8rem", width: "100%" }}
-                        />
-                      </div>
-
-                      <div className={styles.filterGroup}>
-                        <button
-                          className={`${styles.filterBtn} ${transactionTab === "todas" ? styles.filterBtnActive : ""}`}
-                          onClick={() => setTransactionTab("todas")}
-                          style={{ padding: "4px 10px", fontSize: "0.75rem" }}
-                        >
-                          Todos
-                        </button>
-                        <button
-                          className={`${styles.filterBtn} ${transactionTab === "gastos" ? styles.filterBtnActive : ""}`}
-                          onClick={() => setTransactionTab("gastos")}
-                          style={{ padding: "4px 10px", fontSize: "0.75rem" }}
-                        >
-                          Gastos
-                        </button>
-                        <button
-                          className={`${styles.filterBtn} ${transactionTab === "receitas" ? styles.filterBtnActive : ""}`}
-                          onClick={() => setTransactionTab("receitas")}
-                          style={{ padding: "4px 10px", fontSize: "0.75rem" }}
-                        >
-                          Receitas
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={styles.tableWrapper}>
-                    <table className={styles.table}>
-                      <thead>
-                        <tr>
-                          <th style={{ width: "120px" }}>Data</th>
-                          <th style={{ width: "100px" }}>Tipo</th>
-                          <th>Descrição</th>
-                          <th style={{ textAlign: "right", width: "180px" }}>Valor (R$)</th>
-                          <th style={{ textAlign: "right", width: "80px" }}>Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {consolidatedTransactions.map((t) => {
-                          const parts = t.date.split("-");
-                          const formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
-                          const isExpense = t.type === "expense";
-                          
-                          return (
-                            <tr key={t.id}>
-                              <td style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                  <Calendar size={12} className="text-muted" />
-                                  {formattedDate}
-                                </div>
-                              </td>
-                              <td>
-                                <span className={isExpense ? "bg-danger-badge" : "bg-success-badge"} style={{ fontSize: "0.7rem", padding: "2px 6px" }}>
-                                  {t.displayType}
-                                </span>
-                              </td>
-                              <td style={{ fontSize: "0.875rem", fontWeight: "600" }}>
-                                {t.description}
-                              </td>
-                              <td style={{ textAlign: "right" }}>
-                                <strong className={t.colorClass} style={{ fontSize: "0.9rem" }}>
-                                  {isExpense ? "-" : "+"} R$ {t.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </strong>
-                              </td>
-                              <td style={{ textAlign: "right" }}>
-                                <button
-                                  className={`${styles.btn} ${styles.btnIcon} ${styles.btnDanger}`}
-                                  onClick={() => handleTransactionDelete(t.id, t.type, t.description)}
-                                  style={{ width: "26px", height: "26px" }}
-                                  title="Excluir Lançamento"
-                                >
-                                  <Trash2 size={12} />
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                        {consolidatedTransactions.length === 0 && (
-                          <tr>
-                            <td colSpan="5" className="text-muted" style={{ textAlign: "center", padding: "3rem" }}>
-                              Nenhum lançamento encontrado para os filtros ativos.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
+        {appTab === "financeiro" && <FinanceiroSection />}
 
         {/* ABA FRAMEWORKS */}
         {appTab === "frameworks" && renderFrameworksTab()}
@@ -1275,118 +1034,6 @@ export default function MainApp() {
         {appTab === "brainstorm" && renderBrainstormTab()}
 
       </main>
-
-      {/* 3. FLUTUANTE DE AÇÕES RÁPIDAS (BOTOES MAIS HIGHLIGHT E CLEAN) */}
-      {!loading && appTab === "financeiro" && (
-        <div className={styles.quickActionsPanel}>
-          {/* Nova Receita */}
-          <button
-            className={`${styles.quickBtn} ${styles.quickBtnRevenue}`}
-            onClick={() => {
-              setActiveModal("revenue");
-              setFormDate(new Date().toISOString().split("T")[0]);
-            }}
-          >
-            <Plus size={16} />
-            <span>Receita</span>
-          </button>
-
-          {/* Novo Gasto */}
-          <button
-            className={styles.quickBtn}
-            onClick={() => {
-              setActiveModal("expense");
-              setFormDate(new Date().toISOString().split("T")[0]);
-            }}
-            style={{ backgroundColor: "var(--color-danger)", boxShadow: "0 8px 24px var(--color-danger-glow)" }}
-          >
-            <Plus size={16} />
-            <span>Gasto</span>
-          </button>
-        </div>
-      )}
-
-      {/* 4. MODAL DE INSERÇÃO SIMPLIFICADO */}
-      {activeModal && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalContent} style={{ maxWidth: "400px" }}>
-            <div className={styles.modalHeader}>
-              <h2>Novo Lançamento: {activeModal === "expense" ? "Gasto (Saída)" : "Receita (Entrada)"}</h2>
-              <button className={styles.closeBtn} onClick={() => {
-                setActiveModal(null);
-                setFormDescription("");
-                setFormAmount("");
-              }}>✕</button>
-            </div>
-            <form onSubmit={handleTransactionSubmit}>
-              
-              {/* Data */}
-              <div className={styles.formGroup}>
-                <label>Data</label>
-                <input
-                  type="date"
-                  className={styles.input}
-                  value={formDate}
-                  onChange={(e) => setFormDate(e.target.value)}
-                  required
-                />
-              </div>
-
-              {/* Descrição Simples */}
-              <div className={styles.formGroup}>
-                <label>Descrição</label>
-                <input
-                  type="text"
-                  className={styles.input}
-                  placeholder={activeModal === "expense" ? "ex: Meta Ads, Hospedagem Vercel" : "ex: Vendas Ebook, Boleto Pago"}
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  required
-                />
-              </div>
-
-              {/* Valor Simples */}
-              <div className={styles.formGroup}>
-                <label>Valor (R$)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  className={styles.input}
-                  placeholder="0.00"
-                  value={formAmount}
-                  onChange={(e) => setFormAmount(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className={styles.formActions}>
-                <button 
-                  type="button" 
-                  className={styles.btn} 
-                  onClick={() => {
-                    setActiveModal(null);
-                    setFormDescription("");
-                    setFormAmount("");
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  className={`${styles.btn} ${styles.btnPrimary}`}
-                  style={{
-                    backgroundColor: activeModal === "expense" ? "var(--color-danger)" : "var(--color-success)",
-                    borderColor: activeModal === "expense" ? "var(--color-danger)" : "var(--color-success)"
-                  }}
-                >
-                  Confirmar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
