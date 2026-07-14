@@ -6,10 +6,24 @@ import { generateHistoricalData } from "./mockData";
 
 const StoreContext = createContext(null);
 
+const generateUUID = () => {
+  if (typeof window !== "undefined" && window.crypto && window.crypto.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
 export function StoreProvider({ children }) {
   const [expenses, setExpenses] = useState([]);
   const [revenues, setRevenues] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
+  const [boards, setBoards] = useState([]);
+  const [columns, setColumns] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [usingSupabase, setUsingSupabase] = useState(false);
 
@@ -91,22 +105,31 @@ export function StoreProvider({ children }) {
         const [
           resExpenses,
           resRevenues,
-          resCampaigns
+          resCampaigns,
+          resBoards,
+          resColumns,
+          resTasks
         ] = await Promise.allSettled([
           supabase.from("expenses").select("*"),
           supabase.from("revenues").select("*"),
-          supabase.from("campaigns").select("*")
+          supabase.from("campaigns").select("*"),
+          supabase.from("workspace_boards").select("*"),
+          supabase.from("workspace_columns").select("*"),
+          supabase.from("workspace_tasks").select("*")
         ]);
 
         const dbExpenses = resExpenses.status === "fulfilled" && !resExpenses.value.error ? resExpenses.value.data : null;
         const dbRevenues = resRevenues.status === "fulfilled" && !resRevenues.value.error ? resRevenues.value.data : null;
         const dbCampaigns = resCampaigns.status === "fulfilled" && !resCampaigns.value.error ? resCampaigns.value.data : null;
+        const dbBoards = resBoards.status === "fulfilled" && !resBoards.value.error ? resBoards.value.data : null;
+        const dbColumns = resColumns.status === "fulfilled" && !resColumns.value.error ? resColumns.value.data : null;
+        const dbTasks = resTasks.status === "fulfilled" && !resTasks.value.error ? resTasks.value.data : null;
 
         if (dbExpenses === null || dbRevenues === null) {
           throw new Error("Erro ao carregar tabelas principais do Supabase");
         }
 
-        // --- LÓGICA DE MIGRAÇÃO AUTOMÁTICA ---
+        // --- LÓGICA DE MIGRAÇÃO AUTOMÁTICA CAIXA ---
         let localExpenses = [];
         let localRevenues = [];
         let localCampaigns = [];
@@ -168,24 +191,68 @@ export function StoreProvider({ children }) {
             setCampaigns(dbCampaigns);
           }
         } else {
-          // Se a tabela 'campaigns' não existir no Supabase, usa localCampaigns
           console.warn("Tabela 'campaigns' não encontrada no Supabase. Usando localStorage.");
           if (localCampaigns.length > 0) {
             setCampaigns(localCampaigns);
           } else {
-            // Inicializar campanhas padrão
             const initialCampaigns = [
-              { id: "c-1", name: "Prospecção — Coleção Inverno", product: "Coleção Inverno", platform: "Meta", status: "escalada", daily_budget: 1000 },
-              { id: "c-2", name: "Remarketing Checkout", product: "Coleção Inverno", platform: "Meta", status: "ativa", daily_budget: 500 },
-              { id: "c-3", name: "Search — Genéricas", product: "Vortex Fit", platform: "Google", status: "escalada", daily_budget: 1500 },
-              { id: "c-4", name: "Performance Max", product: "Vortex Fit", platform: "Google", status: "pausada", daily_budget: 800 },
-              { id: "c-5", name: "Spark Ads — UGC #12", product: "Nortesys", platform: "TikTok", status: "escalada", daily_budget: 600 },
-              { id: "c-6", name: "Conversões — Lookalike 3%", product: "Bela Mesa", platform: "Meta", status: "ativa", daily_budget: 700 },
-              { id: "c-7", name: "Shopping Inteligente", product: "Bela Mesa", platform: "Google", status: "escalada", daily_budget: 900 }
+              { id: generateUUID(), name: "Prospecção — Coleção Inverno", product: "Coleção Inverno", platform: "Meta", status: "escalada", daily_budget: 1000 },
+              { id: generateUUID(), name: "Remarketing Checkout", product: "Coleção Inverno", platform: "Meta", status: "ativa", daily_budget: 500 },
+              { id: generateUUID(), name: "Search — Genéricas", product: "Vortex Fit", platform: "Google", status: "escalada", daily_budget: 1500 },
+              { id: generateUUID(), name: "Performance Max", product: "Vortex Fit", platform: "Google", status: "pausada", daily_budget: 800 },
+              { id: generateUUID(), name: "Spark Ads — UGC #12", product: "Nortesys", platform: "TikTok", status: "escalada", daily_budget: 600 },
+              { id: generateUUID(), name: "Conversões — Lookalike 3%", product: "Bela Mesa", platform: "Meta", status: "ativa", daily_budget: 700 },
+              { id: generateUUID(), name: "Shopping Inteligente", product: "Bela Mesa", platform: "Google", status: "escalada", daily_budget: 900 }
             ];
             localStorage.setItem("neo_campaigns", JSON.stringify(initialCampaigns));
             setCampaigns(initialCampaigns);
           }
+        }
+
+        // --- LÓGICA DE MIGRAÇÃO AUTOMÁTICA WORKSPACE ---
+        if (dbBoards !== null && dbColumns !== null && dbTasks !== null) {
+          let localBoards = [];
+          let localColumns = [];
+          let localTasks = [];
+          try {
+            const rawB = localStorage.getItem("neo_workspace_boards");
+            const rawC = localStorage.getItem("neo_workspace_columns");
+            const rawT = localStorage.getItem("neo_workspace_tasks");
+            if (rawB) localBoards = JSON.parse(rawB);
+            if (rawC) localColumns = JSON.parse(rawC);
+            if (rawT) localTasks = JSON.parse(rawT);
+          } catch (e) {
+            console.warn("Erro ao ler localStorage do Workspace para migração:", e);
+          }
+
+          if (dbBoards.length === 0 && localBoards.length > 0) {
+            console.log("Migrando Workspace para o Supabase...");
+            // Limpa IDs locais ou insere mantendo chaves primárias
+            await supabase.from("workspace_boards").insert(localBoards);
+            await supabase.from("workspace_columns").insert(localColumns);
+            await supabase.from("workspace_tasks").insert(localTasks);
+
+            const [resNewB, resNewC, resNewT] = await Promise.all([
+              supabase.from("workspace_boards").select("*"),
+              supabase.from("workspace_columns").select("*"),
+              supabase.from("workspace_tasks").select("*")
+            ]);
+            setBoards(resNewB.data || []);
+            setColumns(resNewC.data || []);
+            setTasks(resNewT.data || []);
+
+            localStorage.removeItem("neo_workspace_boards");
+            localStorage.removeItem("neo_workspace_columns");
+            localStorage.removeItem("neo_workspace_tasks");
+            console.log("Migração do Workspace concluída!");
+          } else {
+            setBoards(dbBoards);
+            setColumns(dbColumns);
+            setTasks(dbTasks);
+          }
+        } else {
+          console.warn("Tabelas do Workspace não encontradas no Supabase. Usando localFallback.");
+          loadWorkspaceLocalFallback();
         }
       } catch (err) {
         console.error("Falha ao carregar do Supabase, usando localStorage:", err);
@@ -561,6 +628,342 @@ export function StoreProvider({ children }) {
     });
   }, [campaigns, expenses, revenues]);
 
+  // ---------------------------------------------
+  // OPERAÇÕES WORKSPACE (BOARDS, COLUMNS, TASKS)
+  // ---------------------------------------------
+
+  // BOARDS
+  const addBoard = async (board) => {
+    const newBoard = {
+      ...board,
+      id: generateUUID(),
+      is_favorite: false,
+      is_archived: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    if (usingSupabase) {
+      const { data, error } = await supabase.from("workspace_boards").insert([newBoard]).select();
+      if (!error && data) {
+        setBoards((prev) => [...prev, data[0]]);
+        
+        // Criar colunas padrão para o novo board
+        const defaultColNames = ["Backlog", "A Fazer", "Em Andamento", "Em Revisão", "Concluído"];
+        const colsToInsert = defaultColNames.map((name, position) => ({
+          id: generateUUID(),
+          board_id: data[0].id,
+          name,
+          position
+        }));
+        const { data: colsData, error: colsErr } = await supabase.from("workspace_columns").insert(colsToInsert).select();
+        if (!colsErr && colsData) {
+          setColumns((prev) => [...prev, ...colsData]);
+        }
+      }
+    } else {
+      const updatedBoards = [...boards, newBoard];
+      setBoards(updatedBoards);
+      localStorage.setItem("neo_workspace_boards", JSON.stringify(updatedBoards));
+
+      const defaultColNames = ["Backlog", "A Fazer", "Em Andamento", "Em Revisão", "Concluído"];
+      const newCols = defaultColNames.map((name, idx) => ({
+        id: generateUUID(),
+        board_id: newBoard.id,
+        name,
+        position: idx,
+        created_at: new Date().toISOString()
+      }));
+      const updatedCols = [...columns, ...newCols];
+      setColumns(updatedCols);
+      localStorage.setItem("neo_workspace_columns", JSON.stringify(updatedCols));
+    }
+  };
+
+  const updateBoard = async (id, updates) => {
+    const updatedFields = { ...updates, updated_at: new Date().toISOString() };
+    if (usingSupabase) {
+      const { error } = await supabase.from("workspace_boards").update(updatedFields).eq("id", id);
+      if (!error) {
+        setBoards((prev) => prev.map((b) => (b.id === id ? { ...b, ...updatedFields } : b)));
+      }
+    } else {
+      const updated = boards.map((b) => (b.id === id ? { ...b, ...updatedFields } : b));
+      setBoards(updated);
+      localStorage.setItem("neo_workspace_boards", JSON.stringify(updated));
+    }
+  };
+
+  const deleteBoard = async (id) => {
+    if (usingSupabase) {
+      const { error } = await supabase.from("workspace_boards").delete().eq("id", id);
+      if (!error) {
+        setBoards((prev) => prev.filter((b) => b.id !== id));
+        setColumns((prev) => prev.filter((col) => col.board_id !== id));
+        setTasks((prev) => prev.filter((t) => t.board_id !== id));
+      }
+    } else {
+      const updatedBoards = boards.filter((b) => b.id !== id);
+      setBoards(updatedBoards);
+      localStorage.setItem("neo_workspace_boards", JSON.stringify(updatedBoards));
+
+      const updatedCols = columns.filter((col) => col.board_id !== id);
+      setColumns(updatedCols);
+      localStorage.setItem("neo_workspace_columns", JSON.stringify(updatedCols));
+
+      const updatedTasks = tasks.filter((t) => t.board_id !== id);
+      setTasks(updatedTasks);
+      localStorage.setItem("neo_workspace_tasks", JSON.stringify(updatedTasks));
+    }
+  };
+
+  const duplicateBoard = async (id) => {
+    const boardToDup = boards.find(b => b.id === id);
+    if (!boardToDup) return;
+
+    const dupBoard = {
+      id: generateUUID(),
+      name: `${boardToDup.name} (Cópia)`,
+      description: boardToDup.description,
+      template_name: boardToDup.template_name,
+      is_favorite: false,
+      is_archived: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    if (usingSupabase) {
+      const { data: newB, error: bErr } = await supabase.from("workspace_boards").insert([dupBoard]).select();
+      if (!bErr && newB) {
+        setBoards(prev => [...prev, newB[0]]);
+        
+        const boardCols = columns.filter(c => c.board_id === id).sort((a,b) => a.position - b.position);
+        for (const col of boardCols) {
+          const newColId = generateUUID();
+          const { data: newC, error: cErr } = await supabase.from("workspace_columns").insert([{
+            id: newColId,
+            board_id: newB[0].id,
+            name: col.name,
+            position: col.position
+          }]).select();
+
+          if (!cErr && newC) {
+            setColumns(prev => [...prev, newC[0]]);
+            
+            const colTasks = tasks.filter(t => t.column_id === col.id);
+            const tasksToInsert = colTasks.map(t => ({
+              id: generateUUID(),
+              column_id: newColId,
+              board_id: newB[0].id,
+              title: t.title,
+              description: t.description,
+              start_date: t.start_date,
+              due_date: t.due_date,
+              priority: t.priority,
+              status: t.status,
+              position: t.position,
+              checklist: t.checklist,
+              tags: t.tags,
+              comments: t.comments,
+              responsibles: t.responsibles,
+              history: [{ id: generateUUID(), action: "criação", date: new Date().toISOString(), details: "Copiada do quadro anterior" }]
+            }));
+
+            if (tasksToInsert.length > 0) {
+              const { data: newTs, error: tErr } = await supabase.from("workspace_tasks").insert(tasksToInsert).select();
+              if (!tErr && newTs) {
+                setTasks(prev => [...prev, ...newTs]);
+              }
+            }
+          }
+        }
+      }
+    } else {
+      const updatedBoards = [...boards, dupBoard];
+      setBoards(updatedBoards);
+      localStorage.setItem("neo_workspace_boards", JSON.stringify(updatedBoards));
+
+      const boardCols = columns.filter(c => c.board_id === id).sort((a,b) => a.position - b.position);
+      let updatedCols = [...columns];
+      let updatedTasks = [...tasks];
+
+      boardCols.forEach((col) => {
+        const newColId = generateUUID();
+        updatedCols.push({
+          id: newColId,
+          board_id: dupBoard.id,
+          name: col.name,
+          position: col.position,
+          created_at: new Date().toISOString()
+        });
+
+        const colTasks = tasks.filter(t => t.column_id === col.id);
+        colTasks.forEach((t) => {
+          updatedTasks.push({
+            ...t,
+            id: generateUUID(),
+            column_id: newColId,
+            board_id: dupBoard.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            history: [{ id: generateUUID(), action: "criação", date: new Date().toISOString(), details: "Copiada do quadro anterior" }]
+          });
+        });
+      });
+
+      setColumns(updatedCols);
+      localStorage.setItem("neo_workspace_columns", JSON.stringify(updatedCols));
+
+      setTasks(updatedTasks);
+      localStorage.setItem("neo_workspace_tasks", JSON.stringify(updatedTasks));
+    }
+  };
+
+  // COLUMNS
+  const addColumn = async (column) => {
+    const newCol = {
+      ...column,
+      id: generateUUID(),
+      created_at: new Date().toISOString()
+    };
+
+    if (usingSupabase) {
+      const { data, error } = await supabase.from("workspace_columns").insert([newCol]).select();
+      if (!error && data) {
+        setColumns((prev) => [...prev, data[0]]);
+      }
+    } else {
+      const updated = [...columns, newCol];
+      setColumns(updated);
+      localStorage.setItem("neo_workspace_columns", JSON.stringify(updated));
+    }
+  };
+
+  const updateColumn = async (id, name) => {
+    if (usingSupabase) {
+      const { error } = await supabase.from("workspace_columns").update({ name }).eq("id", id);
+      if (!error) {
+        setColumns((prev) => prev.map((c) => (c.id === id ? { ...c, name } : c)));
+      }
+    } else {
+      const updated = columns.map((c) => (c.id === id ? { ...c, name } : c));
+      setColumns(updated);
+      localStorage.setItem("neo_workspace_columns", JSON.stringify(updated));
+    }
+  };
+
+  const deleteColumn = async (id) => {
+    if (usingSupabase) {
+      const { error } = await supabase.from("workspace_columns").delete().eq("id", id);
+      if (!error) {
+        setColumns((prev) => prev.filter((c) => c.id !== id));
+        setTasks((prev) => prev.filter((t) => t.column_id !== id));
+      }
+    } else {
+      const updatedCols = columns.filter((c) => c.id !== id);
+      setColumns(updatedCols);
+      localStorage.setItem("neo_workspace_columns", JSON.stringify(updatedCols));
+
+      const updatedTasks = tasks.filter((t) => t.column_id !== id);
+      setTasks(updatedTasks);
+      localStorage.setItem("neo_workspace_tasks", JSON.stringify(updatedTasks));
+    }
+  };
+
+  const reorderColumns = async (boardId, reorderedCols) => {
+    setColumns((prev) => {
+      const filtered = prev.filter((c) => c.board_id !== boardId);
+      return [...filtered, ...reorderedCols].sort((a, b) => a.position - b.position);
+    });
+
+    if (usingSupabase) {
+      const promises = reorderedCols.map((c) =>
+        supabase.from("workspace_columns").update({ position: c.position }).eq("id", c.id)
+      );
+      await Promise.all(promises);
+    } else {
+      const allCols = [...columns.filter((c) => c.board_id !== boardId), ...reorderedCols];
+      localStorage.setItem("neo_workspace_columns", JSON.stringify(allCols));
+    }
+  };
+
+  // TASKS
+  const addTask = async (task) => {
+    const newTask = {
+      ...task,
+      id: generateUUID(),
+      description: task.description || "",
+      priority: task.priority || "normal",
+      status: task.status || "ativo",
+      checklist: task.checklist || [],
+      tags: task.tags || [],
+      comments: task.comments || [],
+      history: task.history || [{ id: generateUUID(), action: "criação", date: new Date().toISOString(), details: "Tarefa criada" }],
+      responsibles: task.responsibles || [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    if (usingSupabase) {
+      const { data, error } = await supabase.from("workspace_tasks").insert([newTask]).select();
+      if (!error && data) {
+        setTasks((prev) => [...prev, data[0]]);
+      }
+    } else {
+      const updated = [...tasks, newTask];
+      setTasks(updated);
+      localStorage.setItem("neo_workspace_tasks", JSON.stringify(updated));
+    }
+  };
+
+  const updateTask = async (id, updates) => {
+    const updatedFields = { ...updates, updated_at: new Date().toISOString() };
+    if (usingSupabase) {
+      const { error } = await supabase.from("workspace_tasks").update(updatedFields).eq("id", id);
+      if (!error) {
+        setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...updatedFields } : t)));
+      }
+    } else {
+      const updated = tasks.map((t) => (t.id === id ? { ...t, ...updatedFields } : t));
+      setTasks(updated);
+      localStorage.setItem("neo_workspace_tasks", JSON.stringify(updated));
+    }
+  };
+
+  const deleteTask = async (id) => {
+    if (usingSupabase) {
+      const { error } = await supabase.from("workspace_tasks").delete().eq("id", id);
+      if (!error) {
+        setTasks((prev) => prev.filter((t) => t.id !== id));
+      }
+    } else {
+      const updated = tasks.filter((t) => t.id !== id);
+      setTasks(updated);
+      localStorage.setItem("neo_workspace_tasks", JSON.stringify(updated));
+    }
+  };
+
+  const reorderTasks = async (boardId, reorderedTasks) => {
+    setTasks((prev) => {
+      const filtered = prev.filter((t) => t.board_id !== boardId);
+      return [...filtered, ...reorderedTasks].sort((a, b) => a.position - b.position);
+    });
+
+    if (usingSupabase) {
+      const promises = reorderedTasks.map((t) =>
+        supabase.from("workspace_tasks").update({ 
+          column_id: t.column_id, 
+          position: t.position,
+          updated_at: new Date().toISOString()
+        }).eq("id", t.id)
+      );
+      await Promise.all(promises);
+    } else {
+      const allTasks = [...tasks.filter((t) => t.board_id !== boardId), ...reorderedTasks];
+      localStorage.setItem("neo_workspace_tasks", JSON.stringify(allTasks));
+    }
+  };
+
   const value = {
     user,
     login,
@@ -578,6 +981,11 @@ export function StoreProvider({ children }) {
     setCustomStartDate,
     setCustomEndDate,
     
+    // Workspace State
+    boards,
+    columns,
+    tasks,
+
     // Métricas
     kpis: filteredData.kpis,
     chartTimeline: filteredData.chartTimeline,
@@ -594,7 +1002,21 @@ export function StoreProvider({ children }) {
     deleteCampaign,
     updateCampaignStatus,
     resetLocalDatabase,
-    refreshData: loadData
+    refreshData: loadData,
+
+    // Ações Workspace
+    addBoard,
+    updateBoard,
+    deleteBoard,
+    duplicateBoard,
+    addColumn,
+    updateColumn,
+    deleteColumn,
+    reorderColumns,
+    addTask,
+    updateTask,
+    deleteTask,
+    reorderTasks
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

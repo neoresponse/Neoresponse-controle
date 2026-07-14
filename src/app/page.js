@@ -25,6 +25,7 @@ import { useStore } from "@/lib/store";
 // Importar Componentes Locais Simplificados
 import DashboardCharts from "@/app/components/DashboardCharts";
 import FinanceiroSection from "@/app/components/FinanceiroSection";
+import WorkspaceSection from "@/app/components/WorkspaceSection";
 
 // Estruturas de Processos Padrão (SOPs) para a Linha de Produção
 const PROCESS_FRAMEWORKS = [
@@ -983,6 +984,12 @@ export default function MainApp() {
               >
                 Brainstorm
               </button>
+              <button 
+                className={`nav-tab ${appTab === "workspace" ? "nav-tab-active" : ""}`}
+                onClick={() => setAppTab("workspace")}
+              >
+                Workspace
+              </button>
             </nav>
           </div>
 
@@ -1032,6 +1039,9 @@ export default function MainApp() {
 
         {/* ABA BRAINSTORM */}
         {appTab === "brainstorm" && renderBrainstormTab()}
+
+        {/* ABA WORKSPACE */}
+        {appTab === "workspace" && <WorkspaceSection />}
 
       </main>
     </div>
