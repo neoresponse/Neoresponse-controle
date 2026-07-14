@@ -24,6 +24,7 @@ export function StoreProvider({ children }) {
   const [boards, setBoards] = useState([]);
   const [columns, setColumns] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [usingSupabase, setUsingSupabase] = useState(false);
 
@@ -254,6 +255,32 @@ export function StoreProvider({ children }) {
           console.warn("Tabelas do Workspace não encontradas no Supabase. Usando localFallback.");
           loadWorkspaceLocalFallback();
         }
+
+        // Migrar ou carregar Calendar se a tabela existir
+        if (dbEvents !== null) {
+          let localEvents = [];
+          try {
+            const rawE = localStorage.getItem("neo_calendar_events");
+            if (rawE) localEvents = JSON.parse(rawE);
+          } catch (e) {
+            console.warn("Erro ao ler localStorage do Calendar para migração:", e);
+          }
+
+          if (dbEvents.length === 0 && localEvents.length > 0) {
+            console.log("Migrando Calendar para o Supabase...");
+            await supabase.from("calendar_events").insert(localEvents);
+            const resNewE = await supabase.from("calendar_events").select("*");
+            setEvents(resNewE.data || []);
+            localStorage.removeItem("neo_calendar_events");
+            console.log("Migração do Calendar concluída!");
+          } else {
+            setEvents(dbEvents);
+          }
+        } else {
+          console.warn("Tabela 'calendar_events' não encontrada no Supabase. Usando localFallback.");
+          loadCalendarLocalFallback();
+        }
+
       } catch (err) {
         console.error("Falha ao carregar do Supabase, usando localStorage:", err);
         loadLocalFallback();
@@ -264,8 +291,201 @@ export function StoreProvider({ children }) {
     setLoading(false);
   }, []);
 
+  const loadWorkspaceLocalFallback = () => {
+    let localBoards = localStorage.getItem("neo_workspace_boards");
+    let localColumns = localStorage.getItem("neo_workspace_columns");
+    let localTasks = localStorage.getItem("neo_workspace_tasks");
+
+    if (!localBoards || !localColumns || !localTasks) {
+      const b1 = generateUUID();
+      const b2 = generateUUID();
+
+      const col1 = generateUUID();
+      const col2 = generateUUID();
+      const col3 = generateUUID();
+      const col4 = generateUUID();
+      const col5 = generateUUID();
+
+      const col6 = generateUUID();
+      const col7 = generateUUID();
+      const col8 = generateUUID();
+      const col9 = generateUUID();
+
+      const initialBoards = [
+        { id: b1, name: "Marketing & Lançamentos", description: "Campanhas de tráfego pago, criativos e estratégias de infoprodutos", is_favorite: true, is_archived: false, template_name: "Marketing", created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: b2, name: "Desenvolvimento SaaS", description: "Backlog de funcionalidades e desenvolvimento do Neoresponse OS", is_favorite: false, is_archived: false, template_name: "Desenvolvimento", created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+      ];
+
+      const initialColumns = [
+        { id: col1, board_id: b1, name: "Backlog", position: 0, created_at: new Date().toISOString() },
+        { id: col2, board_id: b1, name: "A Fazer", position: 1, created_at: new Date().toISOString() },
+        { id: col3, board_id: b1, name: "Em Andamento", position: 2, created_at: new Date().toISOString() },
+        { id: col4, board_id: b1, name: "Em Revisão", position: 3, created_at: new Date().toISOString() },
+        { id: col5, board_id: b1, name: "Concluído", position: 4, created_at: new Date().toISOString() },
+
+        { id: col6, board_id: b2, name: "Backlog", position: 0, created_at: new Date().toISOString() },
+        { id: col7, board_id: b2, name: "A Fazer", position: 1, created_at: new Date().toISOString() },
+        { id: col8, board_id: b2, name: "Em Andamento", position: 2, created_at: new Date().toISOString() },
+        { id: col9, board_id: b2, name: "Concluído", position: 3, created_at: new Date().toISOString() }
+      ];
+
+      const initialTasks = [
+        {
+          id: generateUUID(),
+          column_id: col2,
+          board_id: b1,
+          title: "Criar Copys para Lançamento Inverno",
+          description: "Criar 3 variações de copy para anúncios de tráfego frio focando na dor da escassez.",
+          start_date: new Date().toISOString().split("T")[0],
+          due_date: new Date().toISOString().split("T")[0],
+          completed_date: null,
+          priority: "alta",
+          status: "ativo",
+          position: 0,
+          checklist: [
+            { id: "chk-1", text: "Copy 1: Dor da escassez", completed: false },
+            { id: "chk-2", text: "Copy 2: Depoimento de aluno", completed: false },
+            { id: "chk-3", text: "Copy 3: Oferta direta", completed: false }
+          ],
+          tags: ["Copy", "Marketing"],
+          comments: [
+            { id: "c-1", author: "André Pelizzaro", date: new Date().toISOString(), text: "Gostaria que o foco principal fosse o Instagram Stories." }
+          ],
+          history: [
+            { id: "h-1", action: "criação", date: new Date().toISOString(), details: "Tarefa criada" }
+          ],
+          responsibles: [{ name: "André Pelizzaro", avatar: "AP" }],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        {
+          id: generateUUID(),
+          column_id: col3,
+          board_id: b1,
+          title: "Subir Campanhas de Conversão (CBO)",
+          description: "Subir campanhas de CBO na conta de anúncios com orçamento de R$ 1.000/dia.",
+          start_date: new Date().toISOString().split("T")[0],
+          due_date: new Date(Date.now() + 86400000).toISOString().split("T")[0],
+          completed_date: null,
+          priority: "urgente",
+          status: "ativo",
+          position: 0,
+          checklist: [
+            { id: "chk-4", text: "Configurar públicos de Lookalike 3%", completed: true },
+            { id: "chk-5", text: "Inserir UTMs de rastreamento", completed: false }
+          ],
+          tags: ["Meta Ads", "Tráfego"],
+          comments: [],
+          history: [
+            { id: "h-2", action: "criação", date: new Date().toISOString(), details: "Tarefa criada" },
+            { id: "h-3", action: "mudança de coluna", date: new Date().toISOString(), details: "Movido para Em Andamento" }
+          ],
+          responsibles: [{ name: "André Pelizzaro", avatar: "AP" }],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        {
+          id: generateUUID(),
+          column_id: col5,
+          board_id: b1,
+          title: "Reunião de Alinhamento de Vendas",
+          description: "Alinhar scripts de venda do comercial para o tráfego que está entrando.",
+          start_date: new Date(Date.now() - 86400000).toISOString().split("T")[0],
+          due_date: new Date(Date.now() - 86400000).toISOString().split("T")[0],
+          completed_date: new Date().toISOString().split("T")[0],
+          priority: "normal",
+          status: "ativo",
+          position: 0,
+          checklist: [],
+          tags: ["Financeiro", "Reunião"],
+          comments: [],
+          history: [
+            { id: "h-4", action: "criação", date: new Date().toISOString(), details: "Tarefa criada" },
+            { id: "h-5", action: "conclusão", date: new Date().toISOString(), details: "Tarefa concluída" }
+          ],
+          responsibles: [{ name: "Gustavo Kreuz", avatar: "GK" }],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ];
+
+      localStorage.setItem("neo_workspace_boards", JSON.stringify(initialBoards));
+      localStorage.setItem("neo_workspace_columns", JSON.stringify(initialColumns));
+      localStorage.setItem("neo_workspace_tasks", JSON.stringify(initialTasks));
+
+      setBoards(initialBoards);
+      setColumns(initialColumns);
+      setTasks(initialTasks);
+    } else {
+      setBoards(JSON.parse(localBoards));
+      setColumns(JSON.parse(localColumns));
+      setTasks(JSON.parse(localTasks));
+    }
+  };
+
+  const loadCalendarLocalFallback = () => {
+    let localEvents = localStorage.getItem("neo_calendar_events");
+    if (!localEvents) {
+      const today = new Date();
+      const todayStr = today.toISOString().split("T")[0];
+      const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+
+      const initialEvents = [
+        {
+          id: generateUUID(),
+          title: "Alinhamento Semanal de Tráfego",
+          event_date: todayStr,
+          start_time: "09:00",
+          end_time: "10:00",
+          description: "Revisar o ROAS das campanhas do Facebook Ads e planejar escala de orçamento.",
+          location: "Google Meet",
+          notes: "Trazer os relatórios de ROAS da planilha.",
+          category: "Reunião",
+          color_category: "#3b82f6",
+          duration: 60,
+          responsible_name: "Pelizzaro",
+          history: [{ id: generateUUID(), action: "criação", date: new Date().toISOString(), details: "Evento de exemplo criado" }]
+        },
+        {
+          id: generateUUID(),
+          title: "Subir Novos Criativos de UGC",
+          event_date: todayStr,
+          start_time: "14:30",
+          end_time: "15:30",
+          description: "Subir novos conjuntos de anúncios na campanha Spark Ads do TikTok.",
+          location: "Gerenciador TikTok Ads",
+          notes: "Usar o criativo UGC #12 de unboxing.",
+          category: "Marketing",
+          color_category: "#fb923c",
+          duration: 60,
+          responsible_name: "Gustavo",
+          history: [{ id: generateUUID(), action: "criação", date: new Date().toISOString(), details: "Evento de exemplo criado" }]
+        },
+        {
+          id: generateUUID(),
+          title: "Aprovação de Landing Page de Vendas",
+          event_date: tomorrowStr,
+          start_time: "17:00",
+          end_time: "17:30",
+          description: "Revisar a taxa de conversão e a copy da nova página de checkout.",
+          location: "Figma",
+          notes: "Focar na otimização de velocidade para mobile.",
+          category: "Desenvolvimento",
+          color_category: "#a78bfa",
+          duration: 30,
+          responsible_name: "Pelizzaro",
+          history: [{ id: generateUUID(), action: "criação", date: new Date().toISOString(), details: "Evento de exemplo criado" }]
+        }
+      ];
+
+      localStorage.setItem("neo_calendar_events", JSON.stringify(initialEvents));
+      setEvents(initialEvents);
+    } else {
+      setEvents(JSON.parse(localEvents));
+    }
+  };
+
   const loadLocalFallback = () => {
-    // Migração de limpeza única: remove dados mockados antigos da base local
     if (typeof window !== "undefined") {
       const isCleared = localStorage.getItem("neo_mock_data_cleared_v2");
       if (!isCleared) {
@@ -293,19 +513,22 @@ export function StoreProvider({ children }) {
 
     if (!localCampaigns) {
       const initialCampaigns = [
-        { id: "c-1", name: "Prospecção — Coleção Inverno", product: "Coleção Inverno", platform: "Meta", status: "escalada", daily_budget: 1000 },
-        { id: "c-2", name: "Remarketing Checkout", product: "Coleção Inverno", platform: "Meta", status: "ativa", daily_budget: 500 },
-        { id: "c-3", name: "Search — Genéricas", product: "Vortex Fit", platform: "Google", status: "escalada", daily_budget: 1500 },
-        { id: "c-4", name: "Performance Max", product: "Vortex Fit", platform: "Google", status: "pausada", daily_budget: 800 },
-        { id: "c-5", name: "Spark Ads — UGC #12", product: "Nortesys", platform: "TikTok", status: "escalada", daily_budget: 600 },
-        { id: "c-6", name: "Conversões — Lookalike 3%", product: "Bela Mesa", platform: "Meta", status: "ativa", daily_budget: 700 },
-        { id: "c-7", name: "Shopping Inteligente", product: "Bela Mesa", platform: "Google", status: "escalada", daily_budget: 900 }
+        { id: generateUUID(), name: "Prospecção — Coleção Inverno", product: "Coleção Inverno", platform: "Meta", status: "escalada", daily_budget: 1000 },
+        { id: generateUUID(), name: "Remarketing Checkout", product: "Coleção Inverno", platform: "Meta", status: "ativa", daily_budget: 500 },
+        { id: generateUUID(), name: "Search — Genéricas", product: "Vortex Fit", platform: "Google", status: "escalada", daily_budget: 1500 },
+        { id: generateUUID(), name: "Performance Max", product: "Vortex Fit", platform: "Google", status: "pausada", daily_budget: 800 },
+        { id: generateUUID(), name: "Spark Ads — UGC #12", product: "Nortesys", platform: "TikTok", status: "escalada", daily_budget: 600 },
+        { id: generateUUID(), name: "Conversões — Lookalike 3%", product: "Bela Mesa", platform: "Meta", status: "ativa", daily_budget: 700 },
+        { id: generateUUID(), name: "Shopping Inteligente", product: "Bela Mesa", platform: "Google", status: "escalada", daily_budget: 900 }
       ];
       localStorage.setItem("neo_campaigns", JSON.stringify(initialCampaigns));
       setCampaigns(initialCampaigns);
     } else {
       setCampaigns(JSON.parse(localCampaigns));
     }
+
+    loadWorkspaceLocalFallback();
+    loadCalendarLocalFallback();
   };
 
   useEffect(() => {
@@ -964,6 +1187,57 @@ export function StoreProvider({ children }) {
     }
   };
 
+  // ---------------------------------------------
+  // OPERAÇÕES CALENDAR (EVENTS)
+  // ---------------------------------------------
+  const addEvent = async (event) => {
+    const newEvent = {
+      ...event,
+      id: generateUUID(),
+      history: [{ id: generateUUID(), action: "criação", date: new Date().toISOString(), details: "Evento criado" }],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    if (usingSupabase) {
+      const { data, error } = await supabase.from("calendar_events").insert([newEvent]).select();
+      if (!error && data) {
+        setEvents((prev) => [...prev, data[0]]);
+      }
+    } else {
+      const updated = [...events, newEvent];
+      setEvents(updated);
+      localStorage.setItem("neo_calendar_events", JSON.stringify(updated));
+    }
+  };
+
+  const updateEvent = async (id, updates) => {
+    const updatedFields = { ...updates, updated_at: new Date().toISOString() };
+    if (usingSupabase) {
+      const { error } = await supabase.from("calendar_events").update(updatedFields).eq("id", id);
+      if (!error) {
+        setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...updatedFields } : e)));
+      }
+    } else {
+      const updated = events.map((e) => (e.id === id ? { ...e, ...updatedFields } : e));
+      setEvents(updated);
+      localStorage.setItem("neo_calendar_events", JSON.stringify(updated));
+    }
+  };
+
+  const deleteEvent = async (id) => {
+    if (usingSupabase) {
+      const { error } = await supabase.from("calendar_events").delete().eq("id", id);
+      if (!error) {
+        setEvents((prev) => prev.filter((e) => e.id !== id));
+      }
+    } else {
+      const updated = events.filter((e) => e.id !== id);
+      setEvents(updated);
+      localStorage.setItem("neo_calendar_events", JSON.stringify(updated));
+    }
+  };
+
   const value = {
     user,
     login,
@@ -985,6 +1259,9 @@ export function StoreProvider({ children }) {
     boards,
     columns,
     tasks,
+
+    // Calendar State
+    events,
 
     // Métricas
     kpis: filteredData.kpis,
@@ -1016,7 +1293,12 @@ export function StoreProvider({ children }) {
     addTask,
     updateTask,
     deleteTask,
-    reorderTasks
+    reorderTasks,
+
+    // Ações Calendar
+    addEvent,
+    updateEvent,
+    deleteEvent
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

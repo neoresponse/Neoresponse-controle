@@ -107,3 +107,27 @@ CREATE POLICY "Permitir acesso público de escrita para colunas" ON workspace_co
 
 CREATE POLICY "Permitir acesso público de leitura para tarefas" ON workspace_tasks FOR SELECT USING (true);
 CREATE POLICY "Permitir acesso público de escrita para tarefas" ON workspace_tasks FOR ALL USING (true) WITH CHECK (true);
+
+-- 7. Tabela de Compromissos (Calendar Events)
+CREATE TABLE IF NOT EXISTS calendar_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  event_date DATE NOT NULL,
+  start_time TIME NOT NULL,
+  end_time TIME,
+  description TEXT NOT NULL DEFAULT '',
+  location TEXT NOT NULL DEFAULT '',
+  notes TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT 'Geral',
+  color_category TEXT NOT NULL DEFAULT '#60a5fa',
+  duration INTEGER NOT NULL DEFAULT 60,
+  responsible_name TEXT NOT NULL,
+  history JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Políticas RLS para Calendar
+ALTER TABLE calendar_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Permitir acesso público de leitura para eventos" ON calendar_events FOR SELECT USING (true);
+CREATE POLICY "Permitir acesso público de escrita para eventos" ON calendar_events FOR ALL USING (true) WITH CHECK (true);

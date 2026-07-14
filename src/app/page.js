@@ -26,6 +26,7 @@ import { useStore } from "@/lib/store";
 import DashboardCharts from "@/app/components/DashboardCharts";
 import FinanceiroSection from "@/app/components/FinanceiroSection";
 import WorkspaceSection from "@/app/components/WorkspaceSection";
+import CalendarSection from "@/app/components/CalendarSection";
 
 // Estruturas de Processos Padrão (SOPs) para a Linha de Produção
 const PROCESS_FRAMEWORKS = [
@@ -990,6 +991,12 @@ export default function MainApp() {
               >
                 Workspace
               </button>
+              <button 
+                className={`nav-tab ${appTab === "calendar" ? "nav-tab-active" : ""}`}
+                onClick={() => setAppTab("calendar")}
+              >
+                Calendar
+              </button>
             </nav>
           </div>
 
@@ -1042,6 +1049,9 @@ export default function MainApp() {
 
         {/* ABA WORKSPACE */}
         {appTab === "workspace" && <WorkspaceSection />}
+
+        {/* ABA CALENDAR */}
+        {appTab === "calendar" && <CalendarSection />}
 
       </main>
     </div>
