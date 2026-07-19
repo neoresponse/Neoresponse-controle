@@ -62,7 +62,7 @@ export function StoreProvider({ children }) {
   const login = (email, password) => {
     const cleanEmail = (email || "").trim().toLowerCase();
     const cleanPassword = (password || "").trim();
-    
+
     if (cleanPassword === "2026") {
       let userData = null;
       if (cleanEmail === "pelizzaro@neoresponse.com") {
@@ -109,14 +109,16 @@ export function StoreProvider({ children }) {
           resCampaigns,
           resBoards,
           resColumns,
-          resTasks
+          resTasks,
+          resEvents
         ] = await Promise.allSettled([
           supabase.from("expenses").select("*"),
           supabase.from("revenues").select("*"),
           supabase.from("campaigns").select("*"),
           supabase.from("workspace_boards").select("*"),
           supabase.from("workspace_columns").select("*"),
-          supabase.from("workspace_tasks").select("*")
+          supabase.from("workspace_tasks").select("*"),
+          supabase.from("calendar_events").select("*")
         ]);
 
         const dbExpenses = resExpenses.status === "fulfilled" && !resExpenses.value.error ? resExpenses.value.data : null;
@@ -125,6 +127,7 @@ export function StoreProvider({ children }) {
         const dbBoards = resBoards.status === "fulfilled" && !resBoards.value.error ? resBoards.value.data : null;
         const dbColumns = resColumns.status === "fulfilled" && !resColumns.value.error ? resColumns.value.data : null;
         const dbTasks = resTasks.status === "fulfilled" && !resTasks.value.error ? resTasks.value.data : null;
+        const dbEvents = resEvents.status === "fulfilled" && !resEvents.value.error ? resEvents.value.data : null;
 
         if (dbExpenses === null || dbRevenues === null) {
           throw new Error("Erro ao carregar tabelas principais do Supabase");
@@ -149,7 +152,7 @@ export function StoreProvider({ children }) {
 
         if (isDbEmpty && (localExpenses.length > 0 || localRevenues.length > 0)) {
           console.log("Detectado banco Supabase vazio e dados locais. Iniciando migração automática para a nuvem...");
-          
+
           const expensesToMigrate = localExpenses.map(({ id, created_at, ...rest }) => rest);
           const revenuesToMigrate = localRevenues.map(({ id, created_at, ...rest }) => rest);
 
@@ -183,7 +186,7 @@ export function StoreProvider({ children }) {
             console.log("Migrando campanhas locais para o Supabase...");
             const campaignsToMigrate = localCampaigns.map(({ id, ...rest }) => rest);
             await supabase.from("campaigns").insert(campaignsToMigrate);
-            
+
             const resNewCamp = await supabase.from("campaigns").select("*");
             setCampaigns(resNewCamp.data || []);
             localStorage.removeItem("neo_campaigns");
@@ -196,17 +199,7 @@ export function StoreProvider({ children }) {
           if (localCampaigns.length > 0) {
             setCampaigns(localCampaigns);
           } else {
-            const initialCampaigns = [
-              { id: generateUUID(), name: "Prospecção — Coleção Inverno", product: "Coleção Inverno", platform: "Meta", status: "escalada", daily_budget: 1000 },
-              { id: generateUUID(), name: "Remarketing Checkout", product: "Coleção Inverno", platform: "Meta", status: "ativa", daily_budget: 500 },
-              { id: generateUUID(), name: "Search — Genéricas", product: "Vortex Fit", platform: "Google", status: "escalada", daily_budget: 1500 },
-              { id: generateUUID(), name: "Performance Max", product: "Vortex Fit", platform: "Google", status: "pausada", daily_budget: 800 },
-              { id: generateUUID(), name: "Spark Ads — UGC #12", product: "Nortesys", platform: "TikTok", status: "escalada", daily_budget: 600 },
-              { id: generateUUID(), name: "Conversões — Lookalike 3%", product: "Bela Mesa", platform: "Meta", status: "ativa", daily_budget: 700 },
-              { id: generateUUID(), name: "Shopping Inteligente", product: "Bela Mesa", platform: "Google", status: "escalada", daily_budget: 900 }
-            ];
-            localStorage.setItem("neo_campaigns", JSON.stringify(initialCampaigns));
-            setCampaigns(initialCampaigns);
+            setCampaigns([]);
           }
         }
 
@@ -228,7 +221,6 @@ export function StoreProvider({ children }) {
 
           if (dbBoards.length === 0 && localBoards.length > 0) {
             console.log("Migrando Workspace para o Supabase...");
-            // Limpa IDs locais ou insere mantendo chaves primárias
             await supabase.from("workspace_boards").insert(localBoards);
             await supabase.from("workspace_columns").insert(localColumns);
             await supabase.from("workspace_tasks").insert(localTasks);
@@ -511,20 +503,10 @@ export function StoreProvider({ children }) {
       setRevenues(JSON.parse(localRevenues));
     }
 
-    if (!localCampaigns) {
-      const initialCampaigns = [
-        { id: generateUUID(), name: "Prospecção — Coleção Inverno", product: "Coleção Inverno", platform: "Meta", status: "escalada", daily_budget: 1000 },
-        { id: generateUUID(), name: "Remarketing Checkout", product: "Coleção Inverno", platform: "Meta", status: "ativa", daily_budget: 500 },
-        { id: generateUUID(), name: "Search — Genéricas", product: "Vortex Fit", platform: "Google", status: "escalada", daily_budget: 1500 },
-        { id: generateUUID(), name: "Performance Max", product: "Vortex Fit", platform: "Google", status: "pausada", daily_budget: 800 },
-        { id: generateUUID(), name: "Spark Ads — UGC #12", product: "Nortesys", platform: "TikTok", status: "escalada", daily_budget: 600 },
-        { id: generateUUID(), name: "Conversões — Lookalike 3%", product: "Bela Mesa", platform: "Meta", status: "ativa", daily_budget: 700 },
-        { id: generateUUID(), name: "Shopping Inteligente", product: "Bela Mesa", platform: "Google", status: "escalada", daily_budget: 900 }
-      ];
-      localStorage.setItem("neo_campaigns", JSON.stringify(initialCampaigns));
-      setCampaigns(initialCampaigns);
-    } else {
+    if (localCampaigns) {
       setCampaigns(JSON.parse(localCampaigns));
+    } else {
+      setCampaigns([]);
     }
 
     loadWorkspaceLocalFallback();
@@ -542,17 +524,37 @@ export function StoreProvider({ children }) {
   };
 
   // ---------------------------------------------
-  // OPERAÇÕES CRUD SIMPLIFICADAS
+  // OPERAÇÕES CRUD — DESPESAS E RECEITAS
+  // Todo lançamento tem um "status": 'previsto' ou 'pago'
+  // (só entra no saldo/caixa quando status === 'pago')
   // ---------------------------------------------
   const addExpense = async (expense) => {
-    const newExpense = { ...expense, id: `exp-${Date.now()}` };
+    const payload = { status: "pago", paid_date: null, ...expense };
+    const newExpense = { ...payload, id: `exp-${Date.now()}` };
     if (usingSupabase) {
-      const { data, error } = await supabase.from("expenses").insert([expense]).select();
+      const { data, error } = await supabase.from("expenses").insert([payload]).select();
       if (!error && data) {
         setExpenses((prev) => [...prev, data[0]]);
+      } else {
+        console.error("Erro ao salvar despesa:", error);
       }
     } else {
       const updated = [...expenses, newExpense];
+      setExpenses(updated);
+      saveLocal("expenses", updated);
+    }
+  };
+
+  const updateExpense = async (id, updates) => {
+    if (usingSupabase) {
+      const { error } = await supabase.from("expenses").update(updates).eq("id", id);
+      if (!error) {
+        setExpenses((prev) => prev.map((e) => (e.id === id ? { ...e, ...updates } : e)));
+      } else {
+        console.error("Erro ao atualizar despesa:", error);
+      }
+    } else {
+      const updated = expenses.map((e) => (e.id === id ? { ...e, ...updates } : e));
       setExpenses(updated);
       saveLocal("expenses", updated);
     }
@@ -572,14 +574,32 @@ export function StoreProvider({ children }) {
   };
 
   const addRevenue = async (revenue) => {
-    const newRevenue = { ...revenue, id: `rev-${Date.now()}` };
+    const payload = { status: "pago", paid_date: null, ...revenue };
+    const newRevenue = { ...payload, id: `rev-${Date.now()}` };
     if (usingSupabase) {
-      const { data, error } = await supabase.from("revenues").insert([revenue]).select();
+      const { data, error } = await supabase.from("revenues").insert([payload]).select();
       if (!error && data) {
         setRevenues((prev) => [...prev, data[0]]);
+      } else {
+        console.error("Erro ao salvar receita:", error);
       }
     } else {
       const updated = [...revenues, newRevenue];
+      setRevenues(updated);
+      saveLocal("revenues", updated);
+    }
+  };
+
+  const updateRevenue = async (id, updates) => {
+    if (usingSupabase) {
+      const { error } = await supabase.from("revenues").update(updates).eq("id", id);
+      if (!error) {
+        setRevenues((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)));
+      } else {
+        console.error("Erro ao atualizar receita:", error);
+      }
+    } else {
+      const updated = revenues.map((r) => (r.id === id ? { ...r, ...updates } : r));
       setRevenues(updated);
       saveLocal("revenues", updated);
     }
@@ -701,13 +721,16 @@ export function StoreProvider({ children }) {
     const filteredExpenses = expenses.filter((e) => isWithinRange(e.date));
     const filteredRevenues = revenues.filter((r) => isWithinRange(r.date));
 
-    // KPIs Globais
-    const totalSpend = filteredExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
-    const totalRevenue = filteredRevenues.reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+    // KPIs Globais (considerando apenas o que já foi de fato pago/recebido)
+    const paidExpenses = filteredExpenses.filter((e) => e.status === "pago" || !e.status);
+    const paidRevenues = filteredRevenues.filter((r) => r.status === "pago" || !r.status);
+
+    const totalSpend = paidExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+    const totalRevenue = paidRevenues.reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
     const totalProfit = totalRevenue - totalSpend;
     const overallRoas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
 
-    // Histórico Diário agrupado para o gráfico
+    // Histórico Diário agrupado para o gráfico (apenas valores realizados)
     const dailyDataMap = {};
     const tempDate = new Date(start);
     while (tempDate <= end) {
@@ -716,10 +739,10 @@ export function StoreProvider({ children }) {
       tempDate.setDate(tempDate.getDate() + 1);
     }
 
-    filteredExpenses.forEach((e) => {
+    paidExpenses.forEach((e) => {
       if (dailyDataMap[e.date]) dailyDataMap[e.date].spend += parseFloat(e.amount || 0);
     });
-    filteredRevenues.forEach((r) => {
+    paidRevenues.forEach((r) => {
       if (dailyDataMap[r.date]) dailyDataMap[r.date].revenue += parseFloat(r.amount || 0);
     });
 
@@ -747,7 +770,6 @@ export function StoreProvider({ children }) {
       });
     }
 
-    // Achar maior gasto
     if (filteredExpenses.length > 0) {
       const highestExpense = [...filteredExpenses].sort((a, b) => b.amount - a.amount)[0];
       insights.push({
@@ -757,7 +779,6 @@ export function StoreProvider({ children }) {
       });
     }
 
-    // Achar maior dia de vendas
     if (chartTimeline.length > 0) {
       const bestDay = [...chartTimeline].sort((a, b) => b.revenue - a.revenue)[0];
       if (bestDay && bestDay.revenue > 0) {
@@ -792,61 +813,33 @@ export function StoreProvider({ children }) {
     };
   }, [expenses, revenues, dateFilter, customStartDate, customEndDate]);
 
+  // Métricas de campanhas — sem dados inventados: se não houver gasto/receita real
+  // vinculado (pela descrição), o valor fica em zero em vez de usar números fictícios.
   const campaignMetrics = useMemo(() => {
     return campaigns.map(camp => {
-      // Find all expenses that match the campaign name in their description
-      const campExpenses = expenses.filter(e => 
-        e.description.toLowerCase().includes(camp.name.toLowerCase())
+      const campExpenses = expenses.filter(e =>
+        (e.description || "").toLowerCase().includes(camp.name.toLowerCase())
       );
-      const campRevenues = revenues.filter(r => 
-        r.description.toLowerCase().includes(camp.name.toLowerCase())
+      const campRevenues = revenues.filter(r =>
+        (r.description || "").toLowerCase().includes(camp.name.toLowerCase())
       );
-      
-      let spend = campExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
-      let revenue = campRevenues.reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
-      
-      // Fallback for mock campaigns (matches Image 3)
-      if (spend === 0 && revenue === 0) {
-        if (camp.name === "Prospecção — Coleção Inverno") {
-          spend = 18420;
-          revenue = 61980;
-        } else if (camp.name === "Remarketing Checkout") {
-          spend = 6210;
-          revenue = 9870;
-        } else if (camp.name === "Search — Genéricas") {
-          spend = 22940;
-          revenue = 41200;
-        } else if (camp.name === "Performance Max") {
-          spend = 14100;
-          revenue = 12650;
-        } else if (camp.name === "Spark Ads — UGC #12") {
-          spend = 9870;
-          revenue = 26400;
-        } else if (camp.name === "Conversões — Lookalike 3%") {
-          spend = 12300;
-          revenue = 19870;
-        } else if (camp.name === "Shopping Inteligente") {
-          spend = 8420;
-          revenue = 15900;
-        } else {
-          const daysActive = 10;
-          spend = camp.daily_budget * daysActive;
-          const roasMultiplier = camp.status === "escalada" ? 2.5 : camp.status === "ativa" ? 1.8 : 0.8;
-          revenue = spend * roasMultiplier;
-        }
-      }
-      
+
+      const spend = campExpenses
+        .filter(e => e.status === "pago" || !e.status)
+        .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+      const revenue = campRevenues
+        .filter(r => r.status === "pago" || !r.status)
+        .reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+
       const profit = revenue - spend;
       const roas = spend > 0 ? revenue / spend : 0;
-      const cpa = spend > 0 ? spend / Math.max(1, Math.round(revenue / 150)) : 0;
-      
+
       return {
         ...camp,
         spend,
         revenue,
         profit,
-        roas,
-        cpa
+        roas
       };
     });
   }, [campaigns, expenses, revenues]);
@@ -870,8 +863,7 @@ export function StoreProvider({ children }) {
       const { data, error } = await supabase.from("workspace_boards").insert([newBoard]).select();
       if (!error && data) {
         setBoards((prev) => [...prev, data[0]]);
-        
-        // Criar colunas padrão para o novo board
+
         const defaultColNames = ["Backlog", "A Fazer", "Em Andamento", "Em Revisão", "Concluído"];
         const colsToInsert = defaultColNames.map((name, position) => ({
           id: generateUUID(),
@@ -959,7 +951,7 @@ export function StoreProvider({ children }) {
       const { data: newB, error: bErr } = await supabase.from("workspace_boards").insert([dupBoard]).select();
       if (!bErr && newB) {
         setBoards(prev => [...prev, newB[0]]);
-        
+
         const boardCols = columns.filter(c => c.board_id === id).sort((a,b) => a.position - b.position);
         for (const col of boardCols) {
           const newColId = generateUUID();
@@ -972,7 +964,7 @@ export function StoreProvider({ children }) {
 
           if (!cErr && newC) {
             setColumns(prev => [...prev, newC[0]]);
-            
+
             const colTasks = tasks.filter(t => t.column_id === col.id);
             const tasksToInsert = colTasks.map(t => ({
               id: generateUUID(),
@@ -1174,8 +1166,8 @@ export function StoreProvider({ children }) {
 
     if (usingSupabase) {
       const promises = reorderedTasks.map((t) =>
-        supabase.from("workspace_tasks").update({ 
-          column_id: t.column_id, 
+        supabase.from("workspace_tasks").update({
+          column_id: t.column_id,
           position: t.position,
           updated_at: new Date().toISOString()
         }).eq("id", t.id)
@@ -1254,7 +1246,7 @@ export function StoreProvider({ children }) {
     setDateFilter,
     setCustomStartDate,
     setCustomEndDate,
-    
+
     // Workspace State
     boards,
     columns,
@@ -1270,10 +1262,12 @@ export function StoreProvider({ children }) {
     filteredExpenses: filteredData.filteredExpenses,
     filteredRevenues: filteredData.filteredRevenues,
 
-    // Ações
+    // Ações Financeiro
     addExpense,
+    updateExpense,
     deleteExpense,
     addRevenue,
+    updateRevenue,
     deleteRevenue,
     addCampaign,
     deleteCampaign,
