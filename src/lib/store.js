@@ -27,6 +27,8 @@ export function StoreProvider({ children }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [usingSupabase, setUsingSupabase] = useState(false);
+  const [calendarSyncError, setCalendarSyncError] = useState(false);
+  const [workspaceSyncError, setWorkspaceSyncError] = useState(false);
 
   // Filtros de data globais
   const [dateFilter, setDateFilter] = useState("30d"); // 'hoje', '7d', '30d', 'custom'
@@ -96,8 +98,8 @@ export function StoreProvider({ children }) {
   // ---------------------------------------------
   // CARREGAMENTO DE DADOS (SUPABASE OU LOCALSTORAGE)
   // ---------------------------------------------
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     const hasSupabase = isSupabaseConfigured();
     setUsingSupabase(hasSupabase);
 
@@ -238,18 +240,22 @@ export function StoreProvider({ children }) {
             localStorage.removeItem("neo_workspace_columns");
             localStorage.removeItem("neo_workspace_tasks");
             console.log("Migração do Workspace concluída!");
+            setWorkspaceSyncError(false);
           } else {
             setBoards(dbBoards);
             setColumns(dbColumns);
             setTasks(dbTasks);
+            setWorkspaceSyncError(false);
           }
         } else {
+          setWorkspaceSyncError(true);
           console.warn("Tabelas do Workspace não encontradas no Supabase. Usando localFallback.");
           loadWorkspaceLocalFallback();
         }
 
         // Migrar ou carregar Calendar se a tabela existir
         if (dbEvents !== null) {
+          setCalendarSyncError(false);
           let localEvents = [];
           try {
             const rawE = localStorage.getItem("neo_calendar_events");
@@ -269,18 +275,21 @@ export function StoreProvider({ children }) {
             setEvents(dbEvents);
           }
         } else {
+          setCalendarSyncError(true);
           console.warn("Tabela 'calendar_events' não encontrada no Supabase. Usando localFallback.");
           loadCalendarLocalFallback();
         }
 
       } catch (err) {
+        setWorkspaceSyncError(true);
+        setCalendarSyncError(true);
         console.error("Falha ao carregar do Supabase, usando localStorage:", err);
         loadLocalFallback();
       }
     } else {
       loadLocalFallback();
     }
-    setLoading(false);
+    if (!silent) setLoading(false);
   }, []);
 
   const loadWorkspaceLocalFallback = () => {
@@ -515,6 +524,13 @@ export function StoreProvider({ children }) {
 
   useEffect(() => {
     loadData();
+
+    // Polling a cada 10 segundos para manter os dados sincronizados entre computadores
+    const interval = setInterval(() => {
+      loadData(true);
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, [loadData]);
 
   const saveLocal = (key, data) => {
@@ -1240,6 +1256,8 @@ export function StoreProvider({ children }) {
     campaignMetrics,
     loading,
     usingSupabase,
+    calendarSyncError,
+    workspaceSyncError,
     dateFilter,
     customStartDate,
     customEndDate,

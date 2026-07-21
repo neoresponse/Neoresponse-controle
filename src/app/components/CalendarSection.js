@@ -28,7 +28,9 @@ export default function CalendarSection() {
     events,
     addEvent,
     updateEvent,
-    deleteEvent
+    deleteEvent,
+    usingSupabase,
+    calendarSyncError
   } = useStore();
 
   const formatDate = (dateStr) => {
@@ -420,6 +422,27 @@ export default function CalendarSection() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       
+      {/* ALERTA DE SINCRONIZAÇÃO */}
+      {calendarSyncError && (
+        <div style={{
+          padding: "1rem 1.2rem",
+          background: "rgba(239, 68, 68, 0.08)",
+          border: "1px solid rgba(239, 68, 68, 0.25)",
+          borderRadius: "8px",
+          color: "#f87171",
+          fontSize: "0.8rem",
+          lineHeight: "1.4",
+          display: "flex",
+          alignItems: "center",
+          gap: "0.75rem"
+        }}>
+          <AlertTriangle size={18} style={{ flexShrink: 0, color: "#f87171" }} />
+          <div>
+            <strong>Aviso de Sincronização:</strong> A tabela <code>calendar_events</code> não foi encontrada ou não pôde ser lida no seu Supabase. Os compromissos estão sendo salvos apenas localmente neste computador. Por favor, execute o script SQL no editor do Supabase para ativar o compartilhamento em tempo real entre dispositivos.
+          </div>
+        </div>
+      )}
+
       {/* 1. DASHBOARD DO CALENDAR */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem" }}>
         <div className="card" style={{ padding: "0.8rem 1.2rem", background: "rgba(18, 22, 33, 0.35)", border: "1px solid rgba(166, 134, 80, 0.05)" }}>
