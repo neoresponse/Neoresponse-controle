@@ -6,6 +6,7 @@ import {
   Copy,
   Plus,
   Trash2,
+  Edit2,
   ChevronLeft,
   LayoutGrid,
   ListTodo,
@@ -104,6 +105,8 @@ export default function ProjetosSection() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [showEditStageModal, setShowEditStageModal] = useState(false);
   const [editingStage, setEditingStage] = useState(null);
+  const [showEditProjectModal, setShowEditProjectModal] = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
 
   // Formulário de novo projeto/processo
   const [newType, setNewType] = useState("projeto");
@@ -208,6 +211,13 @@ export default function ProjetosSection() {
     };
     const updated = [copy, ...projects];
     setProjects(updated);
+  }
+
+  function saveEditProject() {
+    if (!editingProject || !editingProject.name.trim()) return;
+    setProjects(prev => prev.map(p => p.id === editingProject.id ? editingProject : p));
+    setShowEditProjectModal(false);
+    setEditingProject(null);
   }
 
   // ============================================================
@@ -341,6 +351,9 @@ export default function ProjetosSection() {
             </span>
           </div>
           <div className={styles.projectCardActions}>
+            <button className={styles.iconBtn} onClick={() => { setEditingProject(project); setShowEditProjectModal(true); }} title="Editar">
+              <Edit2 size={14} />
+            </button>
             <button className={styles.iconBtn} onClick={() => handleDuplicateProject(project.id)} title="Duplicar">
               <Copy size={14} />
             </button>
@@ -719,6 +732,50 @@ export default function ProjetosSection() {
               </button>
               <button className={styles.primaryBtn} onClick={saveEditStage}>
                 <Save size={14} /> Salvar Etapa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: EDITAR PROJETO ================= */}
+      {showEditProjectModal && editingProject && (
+        <div className={styles.modalOverlay} onClick={() => setShowEditProjectModal(false)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Editar {editingProject.type === "projeto" ? "Projeto" : "Processo"}</h2>
+              <button className={styles.iconBtn} onClick={() => setShowEditProjectModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Nome *</label>
+              <input
+                className={styles.formInput}
+                value={editingProject.name}
+                onChange={e => setEditingProject(prev => ({ ...prev, name: e.target.value }))}
+                autoFocus
+                onKeyDown={e => e.key === "Enter" && saveEditProject()}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Descrição (opcional)</label>
+              <textarea
+                className={`${styles.formInput} ${styles.formTextarea}`}
+                value={editingProject.description || ""}
+                onChange={e => setEditingProject(prev => ({ ...prev, description: e.target.value }))}
+                rows={3}
+              />
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button className={styles.cancelBtn} onClick={() => setShowEditProjectModal(false)}>
+                Cancelar
+              </button>
+              <button className={styles.primaryBtn} onClick={saveEditProject} disabled={!editingProject.name.trim()}>
+                <Save size={14} /> Salvar Alterações
               </button>
             </div>
           </div>
