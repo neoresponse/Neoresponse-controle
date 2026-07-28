@@ -14,6 +14,7 @@ import {
   CheckCircle,
   HelpCircle,
   LogOut,
+  FolderKanban,
   Plus,
   Search,
   Trash2,
@@ -27,6 +28,7 @@ import DashboardCharts from "@/app/components/DashboardCharts";
 import FinanceiroSection from "@/app/components/FinanceiroSection";
 import WorkspaceSection from "@/app/components/WorkspaceSection";
 import CalendarSection from "@/app/components/CalendarSection";
+import ProjetosSection from "@/app/components/ProjetosSection";
 
 // Estruturas de Processos Padrão (SOPs) para a Linha de Produção
 const PROCESS_FRAMEWORKS = [
@@ -100,7 +102,7 @@ export default function MainApp() {
   } = useStore();
 
   // Controle de Abas Gerais do App
-  const [appTab, setAppTab] = useState("financeiro"); // 'financeiro', 'frameworks', 'brainstorm'
+  const [appTab, setAppTab] = useState("financeiro"); // 'financeiro', 'frameworks', 'brainstorm', 'projetos'
 
   // Estados do Brainstorm / Insights
   const [ideas, setIdeas] = useState([]);
@@ -997,6 +999,12 @@ export default function MainApp() {
               >
                 Calendar
               </button>
+              <button 
+                className={`nav-tab ${appTab === "projetos" ? "nav-tab-active" : ""}`}
+                onClick={() => setAppTab("projetos")}
+              >
+                Projetos
+              </button>
             </nav>
           </div>
 
@@ -1052,6 +1060,9 @@ export default function MainApp() {
 
         {/* ABA CALENDAR */}
         {appTab === "calendar" && <CalendarSection />}
+
+        {/* ABA PROJETOS E PROCESSOS */}
+        {appTab === "projetos" && <ProjetosSection />}
 
       </main>
     </div>
