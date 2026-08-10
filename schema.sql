@@ -131,3 +131,23 @@ CREATE TABLE IF NOT EXISTS calendar_events (
 ALTER TABLE calendar_events ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Permitir acesso público de leitura para eventos" ON calendar_events FOR SELECT USING (true);
 CREATE POLICY "Permitir acesso público de escrita para eventos" ON calendar_events FOR ALL USING (true) WITH CHECK (true);
+
+-- 8. Tabela de Performance Diária de Campanhas (Meta x Hotmart)
+CREATE TABLE IF NOT EXISTS campaign_daily_performance (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  date DATE NOT NULL DEFAULT CURRENT_DATE,
+  campaign_name TEXT NOT NULL,
+  product_name TEXT,
+  meta_spend NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+  hotmart_revenue NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+  purchases INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  UNIQUE(date, campaign_name) -- Garante apenas 1 registro por campanha por dia
+);
+
+-- Políticas RLS para Performance Diária
+ALTER TABLE campaign_daily_performance ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Permitir acesso público de leitura para performance" ON campaign_daily_performance FOR SELECT USING (true);
+CREATE POLICY "Permitir acesso público de escrita para performance" ON campaign_daily_performance FOR ALL USING (true) WITH CHECK (true);
+

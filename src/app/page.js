@@ -29,6 +29,7 @@ import FinanceiroSection from "@/app/components/FinanceiroSection";
 import WorkspaceSection from "@/app/components/WorkspaceSection";
 import CalendarSection from "@/app/components/CalendarSection";
 import ProjetosSection from "@/app/components/ProjetosSection";
+import RelatoriosSection from "@/app/components/RelatoriosSection";
 
 // Estruturas de Processos Padrão (SOPs) para a Linha de Produção
 const PROCESS_FRAMEWORKS = [
@@ -1005,6 +1006,12 @@ export default function MainApp() {
               >
                 Projetos
               </button>
+              <button 
+                className={`nav-tab ${appTab === "relatorios" ? "nav-tab-active" : ""}`}
+                onClick={() => setAppTab("relatorios")}
+              >
+                Relatórios
+              </button>
             </nav>
           </div>
 
@@ -1063,6 +1070,9 @@ export default function MainApp() {
 
         {/* ABA PROJETOS E PROCESSOS */}
         {appTab === "projetos" && <ProjetosSection />}
+
+        {/* ABA RELATÓRIOS (ROI Meta x Hotmart) */}
+        {appTab === "relatorios" && <RelatoriosSection />}
 
       </main>
     </div>
