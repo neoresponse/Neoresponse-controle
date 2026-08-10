@@ -1,8 +1,12 @@
 {
   "crons": [
     {
-      "path": "/api/cron/meta",
-      "schedule": "15 22 * * *"
+      "path": "/api/cron/meta?mode=preview",
+      "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/cron/meta?mode=final",
+      "schedule": "0 6 * * *"
     }
   ]
 }
