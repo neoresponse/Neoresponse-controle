@@ -111,6 +111,7 @@ export default function MainApp() {
   const [ideaCategory, setIdeaCategory] = useState("Criativos");
   const [ideaDescription, setIdeaDescription] = useState("");
   const [ideaImpact, setIdeaImpact] = useState("Médio");
+  const [showBrainstormModal, setShowBrainstormModal] = useState(false);
 
   // Estado do Framework ativo
   const [activeFramework, setActiveFramework] = useState("framework-1");
@@ -586,139 +587,158 @@ export default function MainApp() {
       setIdeaDescription("");
       setIdeaCategory("Criativos");
       setIdeaImpact("Médio");
+      setShowBrainstormModal(false);
     };
 
+    // Array of subtle rotations for the masonry grid
+    const tilts = ["-2deg", "1.5deg", "-1deg", "2.5deg", "-1.5deg", "1deg"];
+
     return (
-      <div className="brainstorm-layout fade-in">
-        {/* Formulário de Nova Ideia */}
-        <form onSubmit={handleAddIdeaSubmit} className="brain-form">
+      <div className="fade-in">
+        <div className="brainstorm-header">
           <div>
-            <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.15rem", fontWeight: "600" }}>Capturar Ideia</h3>
-            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>Não deixe seus insights e hipóteses de tráfego sumirem.</p>
+            <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: "700" }}>Brainstorm Board</h3>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "4px" }}>Ideias e insights para o futuro do projeto.</p>
           </div>
-
-          <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-            <label style={{ fontSize: "0.7rem" }}>Título da Ideia</label>
-            <input
-              type="text"
-              placeholder="ex: Vídeo Gancho UGC com depoimento"
-              className={styles.input}
-              value={ideaTitle}
-              onChange={(e) => setIdeaTitle(e.target.value)}
-              required
-              style={{ height: "40px", fontSize: "0.85rem" }}
-            />
-          </div>
-
-          <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-            <label style={{ fontSize: "0.7rem" }}>Categoria</label>
-            <select
-              className={styles.select}
-              value={ideaCategory}
-              onChange={(e) => setIdeaCategory(e.target.value)}
-              style={{ height: "40px", fontSize: "0.85rem", backgroundColor: "#040405", border: "1px solid rgba(166, 134, 80, 0.15)", borderRadius: "6px", color: "var(--text-primary)", padding: "0 10px", outline: "none" }}
-            >
-              <option value="Criativos">Criativos (Anúncios)</option>
-              <option value="Públicos">Públicos / Segmentação</option>
-              <option value="Landing Page">Landing Page / Funil</option>
-              <option value="Oferta">Oferta / Copys</option>
-              <option value="Operações">Operações / Outros</option>
-            </select>
-          </div>
-
-          <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-            <label style={{ fontSize: "0.7rem" }}>Impacto Esperado</label>
-            <select
-              className={styles.select}
-              value={ideaImpact}
-              onChange={(e) => setIdeaImpact(e.target.value)}
-              style={{ height: "40px", fontSize: "0.85rem", backgroundColor: "#040405", border: "1px solid rgba(166, 134, 80, 0.15)", borderRadius: "6px", color: "var(--text-primary)", padding: "0 10px", outline: "none" }}
-            >
-              <option value="Alto">Alto Impacto</option>
-              <option value="Médio">Médio Impacto</option>
-              <option value="Baixo">Baixo Impacto</option>
-            </select>
-          </div>
-
-          <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-            <label style={{ fontSize: "0.7rem" }}>Descrição / Insight</label>
-            <textarea
-              placeholder="Descreva a ideia em detalhes, roteiro de criativo ou hipótese de teste..."
-              className={styles.input}
-              value={ideaDescription}
-              onChange={(e) => setIdeaDescription(e.target.value)}
-              required
-              style={{ height: "100px", fontSize: "0.85rem", resize: "none", padding: "10px 14px", fontFamily: "inherit" }}
-            />
-          </div>
-
-          <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`} style={{ justifyContent: "center", height: "40px", fontWeight: "600" }}>
-            Salvar Insight
+          <button 
+            className={`${styles.btn} ${styles.btnPrimary}`} 
+            onClick={() => setShowBrainstormModal(true)}
+            style={{ height: "42px", padding: "0 1.25rem", gap: "8px", boxShadow: "0 8px 20px rgba(166, 134, 80, 0.15)" }}
+          >
+            <Plus size={16} />
+            Nova Ideia
           </button>
-        </form>
+        </div>
 
-        {/* Lista/Grid de Ideias */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          <div>
-            <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.15rem", fontWeight: "600" }}>Banco de Brainstorm</h3>
-            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>Ideias salvas e prontas para validação.</p>
-          </div>
-
-          <div className="ideas-grid">
-            {ideas.map((idea) => {
-              const isExecuted = idea.status === "executada";
-              return (
-                <div key={idea.id} className={`idea-card ${isExecuted ? "idea-card-executed" : ""}`}>
+        <div className="ideas-masonry">
+          {ideas.map((idea, index) => {
+            const isExecuted = idea.status === "executada";
+            const tilt = tilts[index % tilts.length];
+            return (
+              <div 
+                key={idea.id} 
+                className={`post-it-card ${isExecuted ? "idea-card-executed" : ""}`}
+                style={{ transform: `rotate(${tilt})` }}
+              >
+                <div className="post-it-pin"></div>
+                
+                {/* Cabeçalho do Card */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
+                  <span style={{ 
+                    fontSize: "0.7rem", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.05em",
+                    color: idea.category === "Criativos" ? "#DFC18A" : 
+                           idea.category === "Públicos" ? "#3b82f6" : 
+                           idea.category === "Landing Page" ? "#10b981" : "#f59e0b"
+                  }}>
+                    {idea.category}
+                  </span>
                   
-                  {/* Cabeçalho do Card */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
-                    <span className="idea-badge" style={{ 
-                      color: idea.category === "Criativos" ? "#DFC18A" : 
-                             idea.category === "Públicos" ? "#3b82f6" : 
-                             idea.category === "Landing Page" ? "#10b981" : "#f59e0b"
-                    }}>
-                      {idea.category}
-                    </span>
-                    
-                    <span className="idea-badge" style={{ 
-                      color: idea.impact === "Alto" ? "var(--color-danger)" : 
-                             idea.impact === "Médio" ? "var(--color-warning)" : "var(--text-muted)",
-                      backgroundColor: "rgba(255, 255, 255, 0.02)"
-                    }}>
-                      {idea.impact}
-                    </span>
+                  <span style={{ 
+                    fontSize: "0.7rem", fontWeight: "700",
+                    color: idea.impact === "Alto" ? "#ef4444" : 
+                           idea.impact === "Médio" ? "#f59e0b" : "var(--text-muted)",
+                  }}>
+                    {idea.impact.toUpperCase()}
+                  </span>
+                </div>
+
+                {/* Conteúdo */}
+                <h4 className="idea-title">{idea.title}</h4>
+                <p className="idea-desc">{idea.description}</p>
+
+                {/* Ações */}
+                <div className="idea-footer">
+                  <button className="idea-btn-toggle" onClick={() => toggleIdeaStatus(idea.id)}>
+                    {isExecuted ? "↩ Reativar" : "✓ Executada"}
+                  </button>
+
+                  <button 
+                    className={`${styles.btn} ${styles.btnIcon}`}
+                    onClick={() => deleteIdea(idea.id)}
+                    style={{ padding: "4px", color: "var(--text-muted)" }}
+                    title="Excluir ideia"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+          {ideas.length === 0 && (
+            <div className={styles.emptyState} style={{ gridColumn: "1 / -1", padding: "6rem 2rem", background: "none", border: "1px dashed rgba(166,134,80,0.2)" }}>
+              <Lightbulb size={48} color="rgba(166,134,80,0.4)" style={{ marginBottom: "1rem" }} />
+              <h3>Nenhum insight no mural.</h3>
+              <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "0.5rem" }}>Clique em "Nova Ideia" no canto superior para preencher seu quadro.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Modal de Nova Ideia */}
+        {showBrainstormModal && (
+          <div className={styles.modalOverlay}>
+            <div className={styles.modalContent} style={{ maxWidth: "480px" }}>
+              <div className={styles.modalHeader}>
+                <h2>Capturar Ideia</h2>
+                <button className={styles.closeBtn} onClick={() => setShowBrainstormModal(false)}>✕</button>
+              </div>
+              <form onSubmit={handleAddIdeaSubmit}>
+                <div className={styles.formGroup}>
+                  <label>Título da Ideia</label>
+                  <input
+                    type="text"
+                    placeholder="ex: Vídeo Gancho UGC com depoimento"
+                    className={styles.input}
+                    value={ideaTitle}
+                    onChange={(e) => setIdeaTitle(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div className={styles.formGroup}>
+                    <label>Categoria</label>
+                    <select className={styles.select} value={ideaCategory} onChange={(e) => setIdeaCategory(e.target.value)}>
+                      <option value="Criativos">Criativos (Anúncios)</option>
+                      <option value="Públicos">Públicos / Segmentação</option>
+                      <option value="Landing Page">Landing Page / Funil</option>
+                      <option value="Oferta">Oferta / Copys</option>
+                      <option value="Operações">Operações / Outros</option>
+                    </select>
                   </div>
-
-                  {/* Conteúdo */}
-                  <h4 className="idea-title">{idea.title}</h4>
-                  <p className="idea-desc">{idea.description}</p>
-
-                  {/* Ações */}
-                  <div className="idea-footer">
-                    <button className="idea-btn-toggle" onClick={() => toggleIdeaStatus(idea.id)}>
-                      {isExecuted ? "↩ Reativar" : "✓ Executada"}
-                    </button>
-
-                    <button 
-                      className={`${styles.btn} ${styles.btnDanger}`}
-                      onClick={() => deleteIdea(idea.id)}
-                      style={{ padding: "4px 8px", fontSize: "0.7rem", height: "24px" }}
-                    >
-                      Excluir
-                    </button>
+                  <div className={styles.formGroup}>
+                    <label>Impacto Esperado</label>
+                    <select className={styles.select} value={ideaImpact} onChange={(e) => setIdeaImpact(e.target.value)}>
+                      <option value="Alto">Alto</option>
+                      <option value="Médio">Médio</option>
+                      <option value="Baixo">Baixo</option>
+                    </select>
                   </div>
                 </div>
-              );
-            })}
-            {ideas.length === 0 && (
-              <div className={styles.emptyState} style={{ gridColumn: "1 / -1", padding: "4rem 2rem" }}>
-                <Sparkles size={36} className="text-muted" />
-                <h3>Nenhum insight cadastrado.</h3>
-                <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Use o formulário ao lado para registrar sua primeira ideia de tráfego.</p>
-              </div>
-            )}
+
+                <div className={styles.formGroup}>
+                  <label>Descrição / Insight</label>
+                  <textarea
+                    placeholder="Descreva a ideia em detalhes, roteiro de criativo ou hipótese de teste..."
+                    className={styles.input}
+                    value={ideaDescription}
+                    onChange={(e) => setIdeaDescription(e.target.value)}
+                    required
+                    style={{ height: "120px", resize: "none", padding: "12px" }}
+                  />
+                </div>
+
+                <div className={styles.formActions} style={{ marginTop: "1.5rem" }}>
+                  <button type="button" className={styles.btn} onClick={() => setShowBrainstormModal(false)}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>
+                    Adicionar ao Mural
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };
@@ -865,50 +885,64 @@ export default function MainApp() {
         }
         
         /* Brainstorm styles */
-        .brainstorm-layout {
-          display: grid;
-          grid-template-columns: 340px 1fr;
-          gap: 2rem;
-        }
-        @media (max-width: 900px) {
-          .brainstorm-layout {
-            grid-template-columns: 1fr;
-          }
-        }
-        .brain-form {
-          background-color: #08080a;
-          border: 1px solid rgba(166, 134, 80, 0.15);
-          border-radius: 12px;
-          padding: 1.75rem;
-          height: fit-content;
+        .brainstorm-header {
           display: flex;
-          flex-direction: column;
-          gap: 1.25rem;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 2rem;
         }
-        .ideas-grid {
+        .ideas-masonry {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 1.25rem;
+          gap: 2rem;
+          align-items: start;
         }
-        .idea-card {
-          background-color: #08080a;
-          border: 1px solid rgba(166, 134, 80, 0.12);
+        .post-it-card {
+          background: rgba(16, 16, 20, 0.7);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(166, 134, 80, 0.15);
           border-radius: 12px;
           padding: 1.5rem;
           display: flex;
           flex-direction: column;
-          gap: 0.75rem;
+          gap: 1rem;
           position: relative;
-          transition: all 0.2s ease;
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
           text-align: left;
+          box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.05);
         }
-        .idea-card:hover {
-          border-color: rgba(166, 134, 80, 0.25);
-          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+        .post-it-card:hover {
+          transform: translateY(-5px) scale(1.02) !important;
+          border-color: rgba(166, 134, 80, 0.35);
+          box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.08);
+          z-index: 10;
+        }
+        .post-it-pin {
+          position: absolute;
+          top: -10px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 24px;
+          height: 24px;
+          background: radial-gradient(circle at 30% 30%, #fde68a, #d97706);
+          border-radius: 50%;
+          box-shadow: 0 4px 8px rgba(0,0,0,0.5), inset -2px -2px 4px rgba(0,0,0,0.3);
+          z-index: 2;
+        }
+        .post-it-pin::after {
+          content: '';
+          position: absolute;
+          top: 40%;
+          left: 40%;
+          width: 4px;
+          height: 4px;
+          background-color: rgba(255,255,255,0.6);
+          border-radius: 50%;
         }
         .idea-card-executed {
-          border-color: rgba(255, 255, 255, 0.03);
-          background-color: rgba(255, 255, 255, 0.01);
+          opacity: 0.6;
+          filter: grayscale(80%);
         }
         .idea-card-executed .idea-title {
           text-decoration: line-through;
@@ -919,14 +953,15 @@ export default function MainApp() {
         }
         .idea-title {
           font-family: var(--font-display);
-          font-size: 1rem;
+          font-size: 1.1rem;
           font-weight: 600;
-          color: var(--text-primary);
+          color: #f3f4f6;
+          line-height: 1.3;
         }
         .idea-desc {
-          font-size: 0.8125rem;
+          font-size: 0.85rem;
           color: var(--text-secondary);
-          line-height: 1.4;
+          line-height: 1.5;
           flex-grow: 1;
         }
         .idea-footer {
@@ -935,22 +970,23 @@ export default function MainApp() {
           align-items: center;
           margin-top: 0.5rem;
           padding-top: 0.75rem;
-          border-top: 1px solid rgba(255, 255, 255, 0.03);
+          border-top: 1px solid rgba(255, 255, 255, 0.05);
         }
         .idea-btn-toggle {
           background: none;
           border: none;
           color: #a68650;
-          font-size: 0.72rem;
+          font-size: 0.75rem;
           font-weight: 600;
           cursor: pointer;
           padding: 4px 0;
           display: flex;
           align-items: center;
           gap: 4px;
+          transition: color 0.2s;
         }
         .idea-btn-toggle:hover {
-          text-decoration: underline;
+          color: #DFC18A;
         }
       `}</style>
       
@@ -976,12 +1012,7 @@ export default function MainApp() {
               >
                 Financeiro
               </button>
-              <button 
-                className={`nav-tab ${appTab === "frameworks" ? "nav-tab-active" : ""}`}
-                onClick={() => setAppTab("frameworks")}
-              >
-                Frameworks
-              </button>
+
               <button 
                 className={`nav-tab ${appTab === "brainstorm" ? "nav-tab-active" : ""}`}
                 onClick={() => setAppTab("brainstorm")}
@@ -1056,8 +1087,7 @@ export default function MainApp() {
         {/* ABA FINANCEIRO */}
         {appTab === "financeiro" && <FinanceiroSection />}
 
-        {/* ABA FRAMEWORKS */}
-        {appTab === "frameworks" && renderFrameworksTab()}
+
 
         {/* ABA BRAINSTORM */}
         {appTab === "brainstorm" && renderBrainstormTab()}
