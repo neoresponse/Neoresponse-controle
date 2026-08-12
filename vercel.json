@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/meta?mode=preview",
-      "schedule": "30 2 * * *"
+      "schedule": "15 22 * * *"
     },
     {
       "path": "/api/cron/meta?mode=final",
