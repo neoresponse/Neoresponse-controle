@@ -1,17 +1,30 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-// Retorna a data de hoje no formato YYYY-MM-DD
-const getTodayDate = () => {
-  return new Date().toISOString().split('T')[0];
+// Retorna a data considerando o fuso horário do Brasil (UTC-3 / America/Sao_Paulo)
+const getBrazilDateStr = (daysOffset = 0) => {
+  // Pega a data atual em UTC
+  const date = new Date();
+  
+  // Converte para uma string no fuso horário do Brasil
+  const spDateStr = date.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" });
+  
+  // Cria um objeto Date baseado no horário do Brasil
+  const localDate = new Date(spDateStr);
+  
+  // Adiciona/remove os dias (ex: -1 para ontem)
+  localDate.setDate(localDate.getDate() + daysOffset);
+  
+  // Formata no padrão YYYY-MM-DD
+  const yyyy = localDate.getFullYear();
+  const mm = String(localDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(localDate.getDate()).padStart(2, '0');
+  
+  return `${yyyy}-${mm}-${dd}`;
 };
 
-// Retorna a data de ontem no formato YYYY-MM-DD
-const getYesterdayDate = () => {
-  const date = new Date();
-  date.setDate(date.getDate() - 1);
-  return date.toISOString().split('T')[0];
-};
+const getTodayDate = () => getBrazilDateStr(0);
+const getYesterdayDate = () => getBrazilDateStr(-1);
 
 export async function GET(request) {
   try {
