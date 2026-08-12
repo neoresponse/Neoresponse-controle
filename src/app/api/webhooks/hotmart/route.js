@@ -26,8 +26,23 @@ export async function POST(request) {
     // Extrair dados da venda (a estrutura do payload da Hotmart pode variar, ajustando para o padrão 2.0)
     const data = payload.data || payload;
     
-    // Lucro / Comissão recebida
-    const commission = data.commissions ? data.commissions[0]?.value : (data.purchase?.price?.value || 0);
+    // Lucro / Comissão recebida (Garante que vai pegar a comissão do PRODUTOR)
+    let commission = 0;
+    if (data.commissions && Array.isArray(data.commissions)) {
+      // Procura a comissão que pertence a você (PRODUCER)
+      const myCommission = data.commissions.find(c => c.source === 'PRODUCER');
+      
+      if (myCommission) {
+        commission = myCommission.value;
+      } else {
+        // Fallback: se por acaso não achar, tenta pegar a primeira, mas evita a taxa da Hotmart se puder
+        const anyValidCommission = data.commissions.find(c => c.source !== 'HOTMART');
+        commission = anyValidCommission ? anyValidCommission.value : (data.commissions[0]?.value || 0);
+      }
+    } else {
+      // Estrutura legada da Hotmart
+      commission = data.purchase?.price?.value || 0;
+    }
     
     // Nome do produto
     const productName = data.product?.name || 'Produto Desconhecido';
