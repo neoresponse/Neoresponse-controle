@@ -37,7 +37,8 @@ const PROCESS_FRAMEWORKS = [
     id: "framework-1",
     title: "Setup de Campanha (Nomenclatura e Rastreamento)",
     category: "Tráfego Pago",
-    description: "Estrutura padrão para subida de campanhas de conversão focada em otimização de pixel e nomenclatura limpa.",
+    description:
+      "Estrutura padrão para subida de campanhas de conversão focada em otimização de pixel e nomenclatura limpa.",
     steps: [
       "Verificar se o Pixel/CAPI está ativo e recebendo eventos de PageView e Purchase.",
       "Criar Campanha usando nomenclatura: [PRODUTO] - [PLATAFORMA] - [TIPO] - [DATA] (ex: NEO-META-CONV-3006).",
@@ -52,7 +53,8 @@ const PROCESS_FRAMEWORKS = [
     id: "framework-2",
     title: "Otimização Diária de Escala e Corte",
     category: "Otimização",
-    description: "Protocolo de decisão financeira diária para orçamentos de tráfego pago baseando-se no ROAS e custo por compra.",
+    description:
+      "Protocolo de decisão financeira diária para orçamentos de tráfego pago baseando-se no ROAS e custo por compra.",
     steps: [
       "Analisar métricas do dia anterior até as 10h da manhã.",
       "Se o ROAS da Campanha estiver abaixo de 1.2x E o prejuízo for maior que o custo de 1 conversão, pausar os conjuntos de menor desempenho.",
@@ -66,7 +68,8 @@ const PROCESS_FRAMEWORKS = [
     id: "framework-3",
     title: "Linha de Produção de Vídeos de Alta Conversão (UGC)",
     category: "Criativos",
-    description: "Estrutura psicológica para produção de roteiros de anúncios rápidos de 30 a 60 segundos.",
+    description:
+      "Estrutura psicológica para produção de roteiros de anúncios rápidos de 30 a 60 segundos.",
     steps: [
       "Gancho (0-3s): Chamar a atenção com quebra de padrão visual ou frase impactante (ex: 'Esse é o segredo que as marcas escondem...').",
       "Problema (3-15s): Apresentar a dor comum do público-alvo mostrando na prática.",
@@ -97,6 +100,12 @@ export default function MainApp() {
     deleteExpense,
     addRevenue,
     deleteRevenue,
+    // <-- adicionado do Store
+    ideas,
+    addIdea,
+    toggleIdeaStatus,
+    deleteIdea,
+    //
     user,
     login,
     logout
@@ -105,8 +114,7 @@ export default function MainApp() {
   // Controle de Abas Gerais do App
   const [appTab, setAppTab] = useState("financeiro"); // 'financeiro', 'frameworks', 'brainstorm', 'projetos'
 
-  // Estados do Brainstorm / Insights
-  const [ideas, setIdeas] = useState([]);
+  // **Mantidos** – estados usados apenas no modal de criação de ideias
   const [ideaTitle, setIdeaTitle] = useState("");
   const [ideaCategory, setIdeaCategory] = useState("Criativos");
   const [ideaDescription, setIdeaDescription] = useState("");
@@ -119,72 +127,8 @@ export default function MainApp() {
   // Estado do Checklist dos Frameworks
   const [checkedSteps, setCheckedSteps] = useState({});
 
-  // Efeito para carregar dados persistidos de brainstorm e checklist
-  React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedIdeas = localStorage.getItem("neo_brainstorm_ideas");
-      if (savedIdeas) {
-        setIdeas(JSON.parse(savedIdeas));
-      } else {
-        const initialIdeas = [
-          {
-            id: "idea-1",
-            title: "Gancho UGC de 3 Segundos no TikTok",
-            category: "Criativos",
-            description: "Testar um gancho mostrando o produto quebrando e sendo consertado logo nos primeiros 3 segundos para reter atenção.",
-            impact: "Alto",
-            status: "fila"
-          },
-          {
-            id: "idea-2",
-            title: "Página de Pré-Venda Quiz Interativo",
-            category: "Landing Page",
-            description: "Criar um quiz de 5 perguntas antes da oferta para aquecer o público de tráfego frio e aumentar a taxa de conversão final.",
-            impact: "Médio",
-            status: "executada"
-          }
-        ];
-        setIdeas(initialIdeas);
-        localStorage.setItem("neo_brainstorm_ideas", JSON.stringify(initialIdeas));
-      }
-
-      const savedSteps = localStorage.getItem("neo_checked_steps");
-      if (savedSteps) {
-        setCheckedSteps(JSON.parse(savedSteps));
-      }
-    }
-  }, []);
-
-  const addIdea = (title, category, description, impact) => {
-    const newIdea = {
-      id: `idea-${Date.now()}`,
-      title,
-      category,
-      description,
-      impact,
-      status: "fila"
-    };
-    const updated = [newIdea, ...ideas];
-    setIdeas(updated);
-    localStorage.setItem("neo_brainstorm_ideas", JSON.stringify(updated));
-  };
-
-  const deleteIdea = (id) => {
-    const updated = ideas.filter((i) => i.id !== id);
-    setIdeas(updated);
-    localStorage.setItem("neo_brainstorm_ideas", JSON.stringify(updated));
-  };
-
-  const toggleIdeaStatus = (id) => {
-    const updated = ideas.map((i) => {
-      if (i.id === id) {
-        return { ...i, status: i.status === "fila" ? "executada" : "fila" };
-      }
-      return i;
-    });
-    setIdeas(updated);
-    localStorage.setItem("neo_brainstorm_ideas", JSON.stringify(updated));
-  };
+  // **REMOVIDO** – useEffect que carregava/gravava ideias no localStorage
+  // (o Store já cuida da sincronização com Supabase)
 
   const toggleStep = (frameworkId, stepIdx) => {
     const key = `${frameworkId}-${stepIdx}`;
@@ -212,7 +156,7 @@ export default function MainApp() {
     e.preventDefault();
     const success = login(email, password);
     if (!success) {
-      setLoginError("Credenciais inválidas. Verifique seu e-mail e senha.");
+      setLoginError("Credenciais inválidas. Verifique seu e‑mail e senha.");
     } else {
       setLoginError("");
     }
@@ -221,7 +165,7 @@ export default function MainApp() {
   // Processa e une os gastos e receitas em uma única lista cronológica
   const consolidatedTransactions = useMemo(() => {
     const list = [];
-    
+
     // Adicionar gastos
     filteredExpenses.forEach((exp) => {
       list.push({
@@ -249,12 +193,12 @@ export default function MainApp() {
         // Filtro de Aba
         if (transactionTab === "gastos" && t.type !== "expense") return false;
         if (transactionTab === "receitas" && t.type !== "revenue") return false;
-        
+
         // Filtro de Busca por Descrição
         if (searchQuery.trim() !== "") {
           return t.description.toLowerCase().includes(searchQuery.toLowerCase());
         }
-        
+
         return true;
       });
   }, [filteredExpenses, filteredRevenues, transactionTab, searchQuery]);
@@ -308,7 +252,7 @@ export default function MainApp() {
     }
   };
 
-  // Intercepta a exibição se o usuário não estiver autenticado (Visual Ultra-Minimalista Premium Ampliado)
+  // Intercepta a exibição se o usuário não estiver autenticado (Visual Ultra‑Minimalista Premium Ampliado)
   if (!user) {
     return (
       <div className="login-container">
@@ -450,10 +394,10 @@ export default function MainApp() {
         <div className="login-card">
           {/* Logo Dourado Centralizado com Efeito Gold Glow e Aura */}
           <div className="login-logo-container">
-            <img 
-              src="/logo.svg" 
-              alt="NEORESPONSE Logo" 
-              className="login-logo-image" 
+            <img
+              src="/logo.svg"
+              alt="NEORESPONSE Logo"
+              className="login-logo-image"
             />
           </div>
 
@@ -498,17 +442,21 @@ export default function MainApp() {
   }
 
   const renderFrameworksTab = () => {
-    const selectedFramework = PROCESS_FRAMEWORKS.find(f => f.id === activeFramework) || PROCESS_FRAMEWORKS[0];
-    
+    const selectedFramework = PROCESS_FRAMEWORKS.find((f) => f.id === activeFramework) || PROCESS_FRAMEWORKS[0];
+
     return (
       <div className="framework-layout fade-in">
         {/* Lista de Frameworks na Esquerda */}
         <div className="framework-list">
           <div style={{ marginBottom: "1rem" }}>
-            <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.15rem", fontWeight: "600" }}>Linhas de Produção (SOPs)</h3>
-            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>Selecione um processo padrão para estruturar a linha de produção.</p>
+            <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.15rem", fontWeight: "600" }}>
+              Linhas de Produção (SOPs)
+            </h3>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>
+              Selecione um processo padrão para estruturar a linha de produção.
+            </p>
           </div>
-          
+
           {PROCESS_FRAMEWORKS.map((framework) => {
             const isActive = selectedFramework.id === framework.id;
             return (
@@ -518,7 +466,15 @@ export default function MainApp() {
                 onClick={() => setActiveFramework(framework.id)}
               >
                 <span className="framework-badge">{framework.category}</span>
-                <h4 style={{ fontFamily: "var(--font-display)", fontSize: "0.95rem", fontWeight: "600", marginTop: "0.25rem", color: isActive ? "#DFC18A" : "#f3f4f6" }}>
+                <h4
+                  style={{
+                    fontFamily: "var(--font-display)",
+                    fontSize: "0.95rem",
+                    fontWeight: "600",
+                    marginTop: "0.25rem",
+                    color: isActive ? "#DFC18A" : "#f3f4f6"
+                  }}
+                >
                   {framework.title}
                 </h4>
                 <p style={{ fontSize: "0.78rem", color: "var(--text-secondary)", lineHeight: "1.4" }}>
@@ -531,8 +487,16 @@ export default function MainApp() {
 
         {/* Detalhe do Processo e Checklist na Direita */}
         <div className="framework-detail">
-          <div style={{ borderBottom: "1px solid rgba(166, 134, 80, 0.15)", paddingBottom: "1.25rem", marginBottom: "1.25rem" }}>
-            <span className="framework-badge" style={{ marginBottom: "0.5rem" }}>{selectedFramework.category}</span>
+          <div
+            style={{
+              borderBottom: "1px solid rgba(166, 134, 80, 0.15)",
+              paddingBottom: "1.25rem",
+              marginBottom: "1.25rem"
+            }}
+          >
+            <span className="framework-badge" style={{ marginBottom: "0.5rem" }}>
+              {selectedFramework.category}
+            </span>
             <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.25rem", fontWeight: "700", color: "#DFC18A" }}>
               {selectedFramework.title}
             </h3>
@@ -542,7 +506,16 @@ export default function MainApp() {
           </div>
 
           <div style={{ marginBottom: "1.5rem" }}>
-            <h4 style={{ fontSize: "0.75rem", fontWeight: "600", textTransform: "uppercase", color: "var(--text-secondary)", letterSpacing: "0.05em", marginBottom: "0.75rem" }}>
+            <h4
+              style={{
+                fontSize: "0.75rem",
+                fontWeight: "600",
+                textTransform: "uppercase",
+                color: "var(--text-secondary)",
+                letterSpacing: "0.05em",
+                marginBottom: "0.75rem"
+              }}
+            >
               Etapas de Execução (Checklist)
             </h4>
             <div style={{ display: "flex", flexDirection: "column" }}>
@@ -550,26 +523,46 @@ export default function MainApp() {
                 const isStepChecked = !!checkedSteps[`${selectedFramework.id}-${idx}`];
                 return (
                   <div key={idx} className="step-item">
-                    <button 
+                    <button
                       className={`step-checkbox ${isStepChecked ? "step-checkbox-active" : ""}`}
                       onClick={() => toggleStep(selectedFramework.id, idx)}
                     >
                       ✓
                     </button>
-                    <span className={`step-text ${isStepChecked ? "step-text-completed" : ""}`}>
-                      {step}
-                    </span>
+                    <span className={`step-text ${isStepChecked ? "step-text-completed" : ""}`}>{step}</span>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          <div style={{ backgroundColor: "rgba(166, 134, 80, 0.03)", border: "1px solid rgba(166, 134, 80, 0.12)", padding: "1rem 1.25rem", borderRadius: "8px" }}>
-            <h4 style={{ fontSize: "0.7rem", fontWeight: "700", textTransform: "uppercase", color: "#a68650", letterSpacing: "0.05em" }}>
+          <div
+            style={{
+              backgroundColor: "rgba(166, 134, 80, 0.03)",
+              border: "1px solid rgba(166, 134, 80, 0.12)",
+              padding: "1rem 1.25rem",
+              borderRadius: "8px"
+            }}
+          >
+            <h4
+              style={{
+                fontSize: "0.7rem",
+                fontWeight: "700",
+                textTransform: "uppercase",
+                color: "#a68650",
+                letterSpacing: "0.05em"
+              }}
+            >
               Métrica de Performance Desejada
             </h4>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-primary)", fontWeight: "600", marginTop: "0.25rem" }}>
+            <p
+              style={{
+                fontSize: "0.85rem",
+                color: "var(--text-primary)",
+                fontWeight: "600",
+                marginTop: "0.25rem"
+              }}
+            >
               {selectedFramework.metric}
             </p>
           </div>
@@ -590,18 +583,22 @@ export default function MainApp() {
       setShowBrainstormModal(false);
     };
 
-    // Array of subtle rotations for the masonry grid
+    // Array de rotações sutis para o grid masonry
     const tilts = ["-2deg", "1.5deg", "-1deg", "2.5deg", "-1.5deg", "1deg"];
 
     return (
       <div className="fade-in">
         <div className="brainstorm-header">
           <div>
-            <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: "700" }}>Brainstorm Board</h3>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "4px" }}>Ideias e insights para o futuro do projeto.</p>
+            <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: "700" }}>
+              Brainstorm Board
+            </h3>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "4px" }}>
+              Ideias e insights para o futuro do projeto.
+            </p>
           </div>
-          <button 
-            className={`${styles.btn} ${styles.btnPrimary}`} 
+          <button
+            className={`${styles.btn} ${styles.btnPrimary}`}
             onClick={() => setShowBrainstormModal(true)}
             style={{ height: "42px", padding: "0 1.25rem", gap: "8px", boxShadow: "0 8px 20px rgba(166, 134, 80, 0.15)" }}
           >
@@ -615,29 +612,46 @@ export default function MainApp() {
             const isExecuted = idea.status === "executada";
             const tilt = tilts[index % tilts.length];
             return (
-              <div 
-                key={idea.id} 
+              <div
+                key={idea.id}
                 className={`post-it-card ${isExecuted ? "idea-card-executed" : ""}`}
                 style={{ transform: `rotate(${tilt})` }}
               >
                 <div className="post-it-pin"></div>
-                
+
                 {/* Cabeçalho do Card */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
-                  <span style={{ 
-                    fontSize: "0.7rem", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.05em",
-                    color: idea.category === "Criativos" ? "#DFC18A" : 
-                           idea.category === "Públicos" ? "#3b82f6" : 
-                           idea.category === "Landing Page" ? "#10b981" : "#f59e0b"
-                  }}>
+                  <span
+                    style={{
+                      fontSize: "0.7rem",
+                      fontWeight: "600",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      color:
+                        idea.category === "Criativos"
+                          ? "#DFC18A"
+                          : idea.category === "Públicos"
+                          ? "#3b82f6"
+                          : idea.category === "Landing Page"
+                          ? "#10b981"
+                          : "#f59e0b"
+                    }}
+                  >
                     {idea.category}
                   </span>
-                  
-                  <span style={{ 
-                    fontSize: "0.7rem", fontWeight: "700",
-                    color: idea.impact === "Alto" ? "#ef4444" : 
-                           idea.impact === "Médio" ? "#f59e0b" : "var(--text-muted)",
-                  }}>
+
+                  <span
+                    style={{
+                      fontSize: "0.7rem",
+                      fontWeight: "700",
+                      color:
+                        idea.impact === "Alto"
+                          ? "#ef4444"
+                          : idea.impact === "Médio"
+                          ? "#f59e0b"
+                          : "var(--text-muted)"
+                    }}
+                  >
                     {idea.impact.toUpperCase()}
                   </span>
                 </div>
@@ -652,7 +666,7 @@ export default function MainApp() {
                     {isExecuted ? "↩ Reativar" : "✓ Executada"}
                   </button>
 
-                  <button 
+                  <button
                     className={`${styles.btn} ${styles.btnIcon}`}
                     onClick={() => deleteIdea(idea.id)}
                     style={{ padding: "4px", color: "var(--text-muted)" }}
@@ -665,10 +679,20 @@ export default function MainApp() {
             );
           })}
           {ideas.length === 0 && (
-            <div className={styles.emptyState} style={{ gridColumn: "1 / -1", padding: "6rem 2rem", background: "none", border: "1px dashed rgba(166,134,80,0.2)" }}>
+            <div
+              className={styles.emptyState}
+              style={{
+                gridColumn: "1 / -1",
+                padding: "6rem 2rem",
+                background: "none",
+                border: "1px dashed rgba(166,134,80,0.2)"
+              }}
+            >
               <Lightbulb size={48} color="rgba(166,134,80,0.4)" style={{ marginBottom: "1rem" }} />
               <h3>Nenhum insight no mural.</h3>
-              <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "0.5rem" }}>Clique em "Nova Ideia" no canto superior para preencher seu quadro.</p>
+              <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "0.5rem" }}>
+                Clique em "Nova Ideia" no canto superior para preencher seu quadro.
+              </p>
             </div>
           )}
         </div>
@@ -679,7 +703,9 @@ export default function MainApp() {
             <div className={styles.modalContent} style={{ maxWidth: "480px" }}>
               <div className={styles.modalHeader}>
                 <h2>Capturar Ideia</h2>
-                <button className={styles.closeBtn} onClick={() => setShowBrainstormModal(false)}>✕</button>
+                <button className={styles.closeBtn} onClick={() => setShowBrainstormModal(false)}>
+                  ✕
+                </button>
               </div>
               <form onSubmit={handleAddIdeaSubmit}>
                 <div className={styles.formGroup}>
@@ -697,7 +723,11 @@ export default function MainApp() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                   <div className={styles.formGroup}>
                     <label>Categoria</label>
-                    <select className={styles.select} value={ideaCategory} onChange={(e) => setIdeaCategory(e.target.value)}>
+                    <select
+                      className={styles.select}
+                      value={ideaCategory}
+                      onChange={(e) => setIdeaCategory(e.target.value)}
+                    >
                       <option value="Criativos">Criativos (Anúncios)</option>
                       <option value="Públicos">Públicos / Segmentação</option>
                       <option value="Landing Page">Landing Page / Funil</option>
@@ -707,7 +737,11 @@ export default function MainApp() {
                   </div>
                   <div className={styles.formGroup}>
                     <label>Impacto Esperado</label>
-                    <select className={styles.select} value={ideaImpact} onChange={(e) => setIdeaImpact(e.target.value)}>
+                    <select
+                      className={styles.select}
+                      value={ideaImpact}
+                      onChange={(e) => setIdeaImpact(e.target.value)}
+                    >
                       <option value="Alto">Alto</option>
                       <option value="Médio">Médio</option>
                       <option value="Baixo">Baixo</option>
@@ -989,55 +1023,77 @@ export default function MainApp() {
           color: #DFC18A;
         }
       `}</style>
-      
+
       {/* 1. BARRA SUPERIOR PREMIUM (TOP BAR) - SEM SIDEBAR CLUTTER */}
-      <header style={{ borderBottom: "1px solid rgba(166, 134, 80, 0.18)", backgroundColor: "var(--bg-surface)", position: "sticky", top: 0, zIndex: 100 }}>
-        <div style={{ maxWidth: "1100px", margin: "0 auto", height: "70px", padding: "0 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          
+      <header
+        style={{
+          borderBottom: "1px solid rgba(166, 134, 80, 0.18)",
+          backgroundColor: "var(--bg-surface)",
+          position: "sticky",
+          top: 0,
+          zIndex: 100
+        }}
+      >
+        <div
+          style={{
+            maxWidth: "1100px",
+            margin: "0 auto",
+            height: "70px",
+            padding: "0 1.5rem",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center"
+          }}
+        >
           {/* Logo e Abas */}
           <div style={{ display: "flex", alignItems: "center", height: "100%", gap: "2.5rem" }}>
             <div style={{ display: "flex", alignItems: "center", height: "100%" }}>
-              <img 
-                src="/logo.svg" 
-                alt="NEORESPONSE Logo" 
-                style={{ height: "54px", width: "54px", objectFit: "contain", filter: "drop-shadow(0 4px 12px rgba(166, 134, 80, 0.15))" }} 
+              <img
+                src="/logo.svg"
+                alt="NEORESPONSE Logo"
+                style={{
+                  height: "54px",
+                  width: "54px",
+                  objectFit: "contain",
+                  filter: "drop-shadow(0 4px 12px rgba(166, 134, 80, 0.15))"
+                }}
               />
             </div>
-            
+
             {/* Navegação por Abas */}
             <nav className="nav-tabs">
-              <button 
+              <button
                 className={`nav-tab ${appTab === "financeiro" ? "nav-tab-active" : ""}`}
                 onClick={() => setAppTab("financeiro")}
               >
                 Financeiro
               </button>
 
-              <button 
+              <button
                 className={`nav-tab ${appTab === "brainstorm" ? "nav-tab-active" : ""}`}
                 onClick={() => setAppTab("brainstorm")}
               >
                 Brainstorm
               </button>
-              <button 
+              <button
                 className={`nav-tab ${appTab === "workspace" ? "nav-tab-active" : ""}`}
                 onClick={() => setAppTab("workspace")}
               >
                 Workspace
               </button>
-              <button 
+              <button
                 className={`nav-tab ${appTab === "calendar" ? "nav-tab-active" : ""}`}
                 onClick={() => setAppTab("calendar")}
               >
                 Calendar
               </button>
-              <button 
+              <button
                 className={`nav-tab ${appTab === "projetos" ? "nav-tab-active" : ""}`}
                 onClick={() => setAppTab("projetos")}
               >
                 Projetos
               </button>
-              <button 
+              <button
                 className={`nav-tab ${appTab === "relatorios" ? "nav-tab-active" : ""}`}
                 onClick={() => setAppTab("relatorios")}
               >
@@ -1049,27 +1105,58 @@ export default function MainApp() {
           {/* Lado Direito: Status do Banco, Nome do Usuário e Botão Sair */}
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             {/* Indicador do Banco (Supabase vs Local) */}
-            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.75rem", color: "var(--text-secondary)", marginRight: "0.5rem" }}>
-              <span style={{ 
-                width: "8px", 
-                height: "8px", 
-                borderRadius: "50%", 
-                backgroundColor: usingSupabase ? "var(--color-success)" : "var(--color-warning)",
-                boxShadow: usingSupabase ? "0 0 8px var(--color-success-glow)" : "0 0 8px var(--color-warning-glow)"
-              }}></span>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                fontSize: "0.75rem",
+                color: "var(--text-secondary)",
+                marginRight: "0.5rem"
+              }}
+            >
+              <span
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  backgroundColor: usingSupabase ? "var(--color-success)" : "var(--color-warning)",
+                  boxShadow: usingSupabase
+                    ? "0 0 8px var(--color-success-glow)"
+                    : "0 0 8px var(--color-warning-glow)"
+                }}
+              ></span>
               <span>{usingSupabase ? "Supabase (Nuvem)" : "Local (Offline)"}</span>
             </div>
 
             {user && (
-              <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)", letterSpacing: "0.02em", borderLeft: "1px solid rgba(166, 134, 80, 0.18)", paddingLeft: "1rem", borderRight: "1px solid rgba(166, 134, 80, 0.18)", paddingRight: "1rem", lineHeight: "1" }}>
+              <span
+                style={{
+                  fontSize: "0.78rem",
+                  color: "var(--text-secondary)",
+                  letterSpacing: "0.02em",
+                  borderLeft: "1px solid rgba(166, 134, 80, 0.18)",
+                  paddingLeft: "1rem",
+                  borderRight: "1px solid rgba(166, 134, 80, 0.18)",
+                  paddingRight: "1rem",
+                  lineHeight: "1"
+                }}
+              >
                 {user.name}
               </span>
             )}
-            
-            <button 
-              onClick={logout} 
-              className={styles.btn} 
-              style={{ padding: "6px 12px", fontSize: "0.8rem", gap: "0.4rem", color: "var(--text-secondary)", borderColor: "transparent", background: "none" }}
+
+            <button
+              onClick={logout}
+              className={styles.btn}
+              style={{
+                padding: "6px 12px",
+                fontSize: "0.8rem",
+                gap: "0.4rem",
+                color: "var(--text-secondary)",
+                borderColor: "transparent",
+                background: "none"
+              }}
               title="Sair da Conta"
             >
               <LogOut size={14} />
@@ -1080,14 +1167,17 @@ export default function MainApp() {
       </header>
 
       {/* 2. CONTEÚDO CENTRALIZADO */}
-      <main style={{ flexGrow: 1, maxWidth: "1100px", width: "100%", margin: "0 auto", padding: "2rem 1.5rem" }}>
-        
-        {/* CONTEÚDO CONDICIONAL DE CADA ABA */}
-
+      <main
+        style={{
+          flexGrow: 1,
+          maxWidth: "1100px",
+          width: "100%",
+          margin: "0 auto",
+          padding: "2rem 1.5rem"
+        }}
+      >
         {/* ABA FINANCEIRO */}
         {appTab === "financeiro" && <FinanceiroSection />}
-
-
 
         {/* ABA BRAINSTORM */}
         {appTab === "brainstorm" && renderBrainstormTab()}
@@ -1103,7 +1193,6 @@ export default function MainApp() {
 
         {/* ABA RELATÓRIOS (ROI Meta x Hotmart) */}
         {appTab === "relatorios" && <RelatoriosSection />}
-
       </main>
     </div>
   );
