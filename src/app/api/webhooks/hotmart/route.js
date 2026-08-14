@@ -9,6 +9,7 @@ const getTodayDate = () => {
 export async function POST(request) {
   try {
     const payload = await request.json();
+     `console.log('PAYLOAD HOTMART:', JSON.stringify(payload, null, 2));`
 
     // A Hotmart envia um token (hottok) para validar que a requisição é deles
     // const hottok = request.headers.get('x-hotmart-hottok');
