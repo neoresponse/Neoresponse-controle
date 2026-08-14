@@ -1,65 +1,86 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-// Função para tratar a data
-const getTodayDate = () => {
-  return new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-};
+// Retorna a data de HOJE já no fuso de Brasília (corte à meia-noite local), não em UTC
+function getTodayDateBR(baseDate = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(baseDate); // 'en-CA' formata direto como YYYY-MM-DD
+}
+
+// Busca a cotação USD -> BRL do momento (AwesomeAPI, gratuita, sem chave)
+async function getUsdToBrlRate() {
+  try {
+    const res = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL', {
+      cache: 'no-store'
+    });
+    const json = await res.json();
+    const rate = parseFloat(json?.USDBRL?.bid);
+    return Number.isFinite(rate) ? rate : null;
+  } catch (err) {
+    console.error('Falha ao buscar cotação USD-BRL:', err);
+    return null;
+  }
+}
 
 export async function POST(request) {
   try {
     const payload = await request.json();
-     console.log('PAYLOAD HOTMART:', JSON.stringify(payload, null, 2));
 
-    // A Hotmart envia um token (hottok) para validar que a requisição é deles
     // const hottok = request.headers.get('x-hotmart-hottok');
     // if (hottok !== process.env.HOTMART_HOTTOK) {
     //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     // }
 
-    // Verifica se é uma venda aprovada (status APPROVED ou PURCHASE_APPROVED)
     const event = payload.event || payload.status;
     if (event !== 'PURCHASE_APPROVED' && event !== 'APPROVED' && event !== 'COMPLETED') {
-       // Ignora outros eventos (como boleto gerado, carrinho abandonado, etc)
-       return NextResponse.json({ message: 'Evento ignorado (não é venda aprovada)' }, { status: 200 });
+      return NextResponse.json({ message: 'Evento ignorado (não é venda aprovada)' }, { status: 200 });
     }
 
-    // Extrair dados da venda (a estrutura do payload da Hotmart pode variar, ajustando para o padrão 2.0)
     const data = payload.data || payload;
-    
-    // Lucro / Comissão recebida (Garante que vai pegar a comissão do PRODUTOR)
+
+    // Comissão do PRODUTOR (o valor a somar no relatório)
     let commission = 0;
     if (data.commissions && Array.isArray(data.commissions)) {
-      // Procura a comissão que pertence a você (PRODUCER)
       const myCommission = data.commissions.find(c => c.source === 'PRODUCER');
-      
-      if (myCommission) {
-        commission = myCommission.value;
-      } else {
-        // Fallback: se por acaso não achar, tenta pegar a primeira, mas evita a taxa da Hotmart se puder
-        const anyValidCommission = data.commissions.find(c => c.source !== 'HOTMART');
-        commission = anyValidCommission ? anyValidCommission.value : (data.commissions[0]?.value || 0);
-      }
+      const chosen = myCommission
+        || data.commissions.find(c => c.source !== 'HOTMART')
+        || data.commissions[0];
+      commission = chosen?.value || 0;
     } else {
-      // Estrutura legada da Hotmart
       commission = data.purchase?.price?.value || 0;
     }
-    
-    // Nome do produto
-    const productName = data.product?.name || 'Produto Desconhecido';
 
-    // Rastreamento (UTM / SRC)
-    // A Hotmart coloca isso no tracking ou no sck/src
+    // A MOEDA da venda inteira vem daqui — campo oficial documentado pela Hotmart
+    const saleCurrency = (data.purchase?.price?.currency_code || 'BRL').toUpperCase();
+
+    // Converte para BRL se a venda não foi feita em reais
+    let commissionBRL = commission;
+    if (saleCurrency !== 'BRL') {
+      const rate = await getUsdToBrlRate();
+      if (rate) {
+        commissionBRL = commission * rate;
+      } else {
+        // Se a cotação falhar, não perde a venda — grava o valor original
+        // e loga pra conferência manual depois.
+        console.error(`Não foi possível converter ${commission} ${saleCurrency} para BRL. Salvando valor original sem conversão.`);
+      }
+    }
+
+    const productName = data.product?.name || 'Produto Desconhecido';
     const tracking = data.tracking || {};
     const src = tracking.source || data.purchase?.source || 'Orgânico';
-    
-    // O nome da campanha deve ser o 'src' (source) se configurado corretamente no Meta
     const campaignName = src;
-    const today = getTodayDate();
 
-    // Conectar ao Supabase e usar Upsert (Inserir se não existir, atualizar se existir)
+    // Usa a data real da compra (convertida pro fuso BR); cai para "agora" só se faltar no payload
+    const purchaseTimestamp = data.purchase?.approved_date || data.purchase?.order_date || data.creation_date;
+    const baseDate = purchaseTimestamp ? new Date(purchaseTimestamp) : new Date();
+    const today = getTodayDateBR(baseDate);
+
     if (supabase) {
-      // 1. Tentar buscar se já existe registro para hoje e para essa campanha
       const { data: existingRecord } = await supabase
         .from('campaign_daily_performance')
         .select('*')
@@ -68,31 +89,28 @@ export async function POST(request) {
         .single();
 
       if (existingRecord) {
-        // Atualiza somando o valor e as compras
         await supabase
           .from('campaign_daily_performance')
           .update({
-            hotmart_revenue: existingRecord.hotmart_revenue + commission,
+            hotmart_revenue: existingRecord.hotmart_revenue + commissionBRL,
             purchases: existingRecord.purchases + 1
           })
           .eq('id', existingRecord.id);
       } else {
-        // Insere um novo registro
         await supabase
           .from('campaign_daily_performance')
           .insert([{
             date: today,
             campaign_name: campaignName,
             product_name: productName,
-            hotmart_revenue: commission,
+            hotmart_revenue: commissionBRL,
             purchases: 1,
-            meta_spend: 0 // Será preenchido pelo Cron do Meta
+            meta_spend: 0
           }]);
       }
     }
 
     return NextResponse.json({ success: true, message: 'Venda registrada com sucesso no painel de ROI' }, { status: 200 });
-
   } catch (error) {
     console.error('Erro no Webhook da Hotmart:', error);
     return NextResponse.json({ error: 'Erro interno no processamento do webhook' }, { status: 500 });
