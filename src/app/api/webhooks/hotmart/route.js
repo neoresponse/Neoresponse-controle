@@ -12,6 +12,7 @@ function getTodayDateBR(baseDate = new Date()) {
 }
 
 // Busca a cotação USD -> BRL do momento (AwesomeAPI, gratuita, sem chave)
+// Usada só como fallback, caso a Hotmart não mande a conversão pronta no payload.
 async function getUsdToBrlRate() {
   try {
     const res = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL', {
@@ -42,32 +43,34 @@ export async function POST(request) {
 
     const data = payload.data || payload;
 
-    // Comissão do PRODUTOR (o valor a somar no relatório)
-    let commission = 0;
+    // Comissão do PRODUTOR (o valor a somar no relatório) — já em BRL
+    let commissionBRL = 0;
     if (data.commissions && Array.isArray(data.commissions)) {
       const myCommission = data.commissions.find(c => c.source === 'PRODUCER');
       const chosen = myCommission
         || data.commissions.find(c => c.source !== 'HOTMART')
         || data.commissions[0];
-      commission = chosen?.value || 0;
-    } else {
-      commission = data.purchase?.price?.value || 0;
-    }
 
-    // A MOEDA da venda inteira vem daqui — campo oficial documentado pela Hotmart
-    const saleCurrency = (data.purchase?.price?.currency_code || 'BRL').toUpperCase();
-
-    // Converte para BRL se a venda não foi feita em reais
-    let commissionBRL = commission;
-    if (saleCurrency !== 'BRL') {
-      const rate = await getUsdToBrlRate();
-      if (rate) {
-        commissionBRL = commission * rate;
+      if (chosen?.currency_conversion?.converted_value != null) {
+        // A Hotmart já converteu esse valor pra BRL usando a cotação do dia
+        // no momento em que o evento foi gerado (ex: 6.62 USD -> 34.43 BRL).
+        commissionBRL = chosen.currency_conversion.converted_value;
+      } else if (!chosen?.currency_value || chosen.currency_value === 'BRL') {
+        // A comissão já veio em BRL, nada a converter
+        commissionBRL = chosen?.value || 0;
       } else {
-        // Se a cotação falhar, não perde a venda — grava o valor original
-        // e loga pra conferência manual depois.
-        console.error(`Não foi possível converter ${commission} ${saleCurrency} para BRL. Salvando valor original sem conversão.`);
+        // Fallback: a Hotmart não mandou conversão pronta pra essa comissão.
+        // Busca a cotação do dia via AwesomeAPI e converte manualmente.
+        const rate = await getUsdToBrlRate();
+        if (rate) {
+          commissionBRL = (chosen?.value || 0) * rate;
+        } else {
+          commissionBRL = chosen?.value || 0;
+          console.error(`Não foi possível converter ${chosen?.value} ${chosen?.currency_value} para BRL. Salvando valor original sem conversão.`);
+        }
       }
+    } else {
+      commissionBRL = data.purchase?.price?.value || 0;
     }
 
     const productName = data.product?.name || 'Produto Desconhecido';
